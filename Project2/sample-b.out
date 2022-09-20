@@ -1,0 +1,4 @@
+REQ: GET / HTTP/1.0
+REQ: Host: www.icir.org
+REQ: User-Agent: CWRU EECS 325 Client 1.0
+Command: ./proj2 -c -u http://www.icir.org -o mallman.html

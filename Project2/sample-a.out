@@ -1,0 +1,4 @@
+INF: hostname = www.icir.org
+INF: web_filename = /
+INF: output_filename = icir.html
+Command: ./proj2 -u http://www.icir.org -i -o icir.html

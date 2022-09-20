@@ -1,0 +1,10 @@
+RSP: HTTP/1.1 200 OK
+RSP: Date: Mon, 12 Sep 2022 21:40:32 GMT
+RSP: Server: Apache
+RSP: Last-Modified: Fri, 27 Jan 2017 14:39:23 GMT
+RSP: ETag: "164da-547146e89dcc0"
+RSP: Accept-Ranges: bytes
+RSP: Content-Length: 91354
+RSP: Connection: close
+RSP: Content-Type: image/jpeg
+Command: ./proj2 -s -u http://www.icir.org/staff-pics/mallman.jpg -o mark.jpg
