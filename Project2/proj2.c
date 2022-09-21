@@ -11,24 +11,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-
-#define ARG_U 0x1
-#define ARG_O 0x2
-#define ARG_I 0x3
-#define ARG_C 0x4
-#define ARG_S 0x5
-#define ARG_HELP 0x6
-#define ARG_MSG 0x7
-#define ARG_HELLO 0x8
 
 unsigned short cmd_line_flags = 0;
 char *msg = NULL;
+static const char *URL_PREFIX = "http://";
 
-void usage(char *progname)
 /**
  * Prints usage information for this program.
  * */
+void usage(char *progname)
 {
   fprintf(stderr, "%s -u URL [-i] [-c] [-s] -o filename \n", progname);
   fprintf(stderr, "   -u <url>         URL the web client will access\n");
@@ -39,77 +32,63 @@ void usage(char *progname)
   exit(1);
 }
 
-void parseargs(int argc, char *argv[])
-/**
- * Parses the different possible arguments, else by default display usage.
- * */
-{
-  int opt;
 
-  // ? Keep parsing any arguments the user inputs
-  while ((opt = getopt(argc, argv, "uoicsm:")) != -1)
-  {
-    switch (opt)
-    {
-    case 'u':
-      cmd_line_flags |= ARG_U;
-      break;
-    case 'o':
-      cmd_line_flags |= ARG_O;
-      break;
-    case 'i':
-      cmd_line_flags |= ARG_I;
-      break;
-    case 'c':
-      cmd_line_flags |= ARG_C;
-      break;
-    case 's':
-      cmd_line_flags |= ARG_S;
-      break;
-    case 'm':
-      cmd_line_flags |= ARG_MSG;
-      msg = optarg;
-      break;
-    case '?':
-    default:
-      usage(argv[0]);
-    }
-  }
-  if (cmd_line_flags == 0)
-  {
-    fprintf(stderr, "error: no command line option given\n");
-    usage(argv[0]);
-  }
+/**
+ * Handles the -u option.
+ * */
+void handle_u(char* optarg) 
+{
+	printf("url passed: %s\n", optarg);
+	if (strncasecmp(optarg, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
+		printf("url must start with %s\n", URL_PREFIX);
+		exit(1);
+	}
+
+	printf("So far so good!\n");
 }
 
-int main(int argc, char *argv[])
-/**
- * Starting entry point to this program.
- * */
-{
-  parseargs(argc, argv);
 
-  if (cmd_line_flags == ARG_HELP)
-    usage(argv[0]);
-  else if (cmd_line_flags == ARG_HELLO)
-    fprintf(stdout, "hello world\n");
-  else if (cmd_line_flags == ARG_MSG)
-    fprintf(stdout, "%s\n", msg);
-  else if (cmd_line_flags == ARG_U)
-    fprintf(stdout, "U option\n");
-  else if (cmd_line_flags == ARG_O)
-    fprintf(stdout, "O option\n");
-  else if (cmd_line_flags == ARG_I)
-    fprintf(stdout, "I option\n");
-  else if (cmd_line_flags == ARG_C)
-    fprintf(stdout, "C option\n");
-  else if (cmd_line_flags == ARG_S)
-    fprintf(stdout, "S option\n");
-  else
-  {
-    // TODO: Allow multiple options
-    fprintf(stderr, "error: only one option at a time allowed\n");
-    exit(1);
-  }
-  exit(0);
+int main(int argc, char *argv[])
+{
+	int opt;
+	
+	// put ':' in the starting of the
+	// string so that program can
+	//distinguish between '?' and ':'
+	while((opt = getopt(argc, argv, ":u:o:csi")) != -1)
+	{
+		switch(opt)
+		{
+			case 'u':
+				handle_u(optarg);
+				break;
+			case 'o':
+				printf("filename: %s\n", optarg);
+				break;
+			case 'i':
+				printf("option: i\n");
+				break;
+			case 'c':
+				printf("option: c\n");
+				break;
+			case 's':
+				printf("option: s\n");
+				break;
+			case ':':
+				printf("option is missing a value\n");
+				break;
+			case '?':
+				printf("unknown option: %c\n", optopt);
+				usage(argv[0]);
+				break;
+		}
+	}
+	
+	// optind is for the extra arguments
+	// which are not parsed
+	for(; optind < argc; optind++){	
+		printf("extra arguments: %s\n", argv[optind]);
+	}
+	
+	return 0;
 }
