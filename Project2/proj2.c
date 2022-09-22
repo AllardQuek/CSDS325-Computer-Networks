@@ -44,7 +44,7 @@ static char *url_filename;
 static char *output_filename;
 static char *user_agent = "TEMP_USER_AGENT";
 static char http_request[BUFLEN];
-static char *http_response;
+// static char *http_response;
 
 // Define constants
 static const char *OPT_STRING = ":u:o:csi";
@@ -71,11 +71,11 @@ void usage(char *progname)
 /**
  * Prints error message to stderr and exits the program.
  * */
-int errexit (char *format, char *arg)
+int errexit(char *format, char *arg)
 {
-    fprintf (stderr,format,arg);
-    fprintf (stderr,"\n");
-    exit (ERROR);
+    fprintf(stderr,format,arg);
+    fprintf(stderr,"\n");
+    exit(ERROR);
 }
 
 
@@ -137,21 +137,41 @@ void check_required_args()
 }
 
 
-int sendMsg(int sockfd, char *msg, size_t msgSize)
+char* readMsg(int sockfd, size_t *msgSize)
 {
-    // unsigned int convertedNum = htonl(msgSize);
-    // if (write(sockfd, &convertedNum, sizeof(convertedNum)) < 0) { //Send number of bytes
-    //     perror("error writing to socket");
-    //     return -1;
-    // }
+    *msgSize = 0;
 
-    if (write(sockfd, msg, msgSize) < 0) { //Send bytes
-        perror("error writing to socket");
-        return -1;
+    unsigned int length = 0;
+    int bytes_read = read(sockfd, &length, sizeof(length)); //Receive number of bytes
+    if (bytes_read <= 0) {
+        perror("Error in receiving message from server\n");
+        return NULL;
+    }
+    length = ntohl(length);
+
+    char *buffer = malloc(length+1);
+    if (!buffer) {
+        perror("Error in allocating memory to receive message from server\n");
+        return NULL;
     }
 
-    return 0;
+    char *pbuf = buffer;
+    unsigned int buflen = length;
+    while (buflen > 0) {
+        bytes_read = read(sockfd, pbuf, buflen); // Receive bytes
+        if (bytes_read <= 0) {
+            perror("Error in receiving message from server\n");
+            free(buffer);
+            return NULL;
+        }
+        pbuf += bytes_read;
+        buflen -= bytes_read;
+    }
+
+    *msgSize = length;
+    return buffer;
 }
+
 
 /**
  * Sends a HTTP GET request to the server.
@@ -161,69 +181,65 @@ int send_http_request()
     struct sockaddr_in sin;
     struct hostent *hinfo;
     struct protoent *protoinfo;
-    char buffer [BUFLEN];
-	// int ret;
     int sd;
-	char *ptr;
-	size_t n;
+	char recvline[BUFLEN];
+	int bytes_read;
+    // char buffer [BUFLEN];
+	// int ret;
+	// char *ptr;
 
-	/* lookup the hostname */
+	// Lookup the hostname
 	printf("Looking up %s...\n", hostname);
     hinfo = gethostbyname(hostname);
     if (hinfo == NULL)
-        errexit ("cannot find name: %s", hostname);
+        errexit ("Cannot find name: %s!", hostname);
 
-    /* set endpoint information */
+    // Set endpoint information 
 	printf("Setting endpoint info...\n");
-    memset ((char *)&sin, 0x0, sizeof (sin));
+
+	// Zero out the socket address
+    memset((char *)&sin, 0x0, sizeof(sin));	
     sin.sin_family = AF_INET;
     sin.sin_port = htons(HTTP_PORT);
-    memcpy ((char *)&sin.sin_addr,hinfo->h_addr,hinfo->h_length);
+    memcpy((char *)&sin.sin_addr,hinfo->h_addr,hinfo->h_length);
 
-    if ((protoinfo = getprotobyname (PROTOCOL)) == NULL)
-        errexit ("cannot find protocol information for %s", PROTOCOL);
+    if ((protoinfo = getprotobyname(PROTOCOL)) == NULL)
+        errexit ("Cannot find protocol information for %s!", PROTOCOL);
 
-    /* allocate a socket */
-    /* would be SOCK_DGRAM for UDP */
+    // Allocate a socket (would be SOCK_DGRAM for UDP)
 	printf("Allocating a socket...\n");
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
     if (sd < 0)
-        errexit("cannot create socket\n",NULL);
+        errexit("Cannot create socket!\n",NULL);
 
-    /* connect the socket */
+    // Connect the socket
 	printf("Connecting the socket...\n");
     if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-        errexit ("cannot connect", NULL);
+        errexit ("Cannot connect!", NULL);
 
-	/// Form request
+	// * Send HTTP request to server
 	snprintf(http_request, BUFLEN, 
 		"GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
-
+	size_t request_size = strlen(http_request);
 	printf("\nHere is the request:\n\%s\n", http_request);
 
-	if (sendMsg(sd, http_request, BUFLEN) != 0) {
-        close(sd);
-        return 1;
+	// Take note of value for msgSize
+	if (write(sd, http_request, request_size) != request_size) { //Send bytes
+        errexit("Error writing to socket!", NULL);
     }
     printf("MESSAGE SENT. Printing HTTP response...\n\n");
 
-	// TODO: Fix segmentation fault
-	// Read the response
-	while ((n = read(sd, buffer, BUFLEN)) > 0) 
-	{
-		buffer[n] = '\0';
+	// * Read HTTP response from server
+    while ((bytes_read = read(sd, recvline, BUFLEN-1)) > 0) 
+    {
+        printf("%s", recvline);
 
-		if(fputs(buffer, stdout) == EOF)
-		{
-			printf("fputs() error\n");
-		}
+		// ? Zero out after printing current line
+		memset(recvline, 0, BUFLEN);	
+    }   
 
-		/// Remove the trailing chars
-		ptr = strstr(buffer, "\r\n\r\n");
-
-		// check len for OutResponse here ?
-		snprintf(http_response, BUFLEN,"%s", ptr);
-	}          
+	if (bytes_read < 0)
+		errexit("Error reading from socket!", NULL);
 
     close (sd);
     exit (0);

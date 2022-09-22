@@ -31,5 +31,32 @@ int main (int argc, char *argv [])
 
     fprintf (stdout, "%s\n", buffer);
 	printf("PRINTED BUFFER\n");
+
+
+	// TODO: Fix segmentation fault
+	while ((n = read(sd, buffer, BUFLEN)) > 0) 
+	{
+		buffer[n] = '\0';
+
+		if(fputs(buffer, stdout) == EOF)
+		{
+			printf("fputs() error\n");
+		}
+
+		/// Remove the trailing chars
+		ptr = strstr(buffer, "\r\n\r\n");
+
+		// check len for OutResponse here ?
+		snprintf(http_response, BUFLEN,"%s", ptr);
+	}
+
+	// * Stackoverflow example
+	http_response = readMsg(sd, &msgSize); // response from server
+    if (!http_response) {
+        close(sd);
+        return 1;
+    }
+    printf("# of printable characters: %.*s\n", (int)msgSize, http_response);
+    free(http_response);
 }
 
