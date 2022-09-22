@@ -31,7 +31,7 @@ static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
 static const char *ERROR_PREFIX = "ERROR: ";
 static const char *PATH_DELIMITER = "/";
-// static const char *OPTION_I_PREFIX = "INF:";
+static const char *OPTION_I_PREFIX = "INF:";
 // static const char *OPTION_C_PREFIX = "REQ:";
 // static const char *OPTION_S_PREFIX = "RSP: ";
 
@@ -99,7 +99,7 @@ void parse_args(int argc, char *argv [])
 /**
  * Handles the -u option.
  * */
-void handle_u(char* url) 
+void handle_u() 
 {
 	// We should check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
@@ -109,21 +109,32 @@ void handle_u(char* url)
 	printf("Valid URL received: %s\n", url);
 }
 
-
-void handle_i(char* url) 
+/**
+ * Handles the -i option.
+ * 
+ * Example:
+ * url: http://www.icir.org/home/index.html
+ * INF: hostname = [hostname]
+ * INF: web_filename = [url_filename]
+ * INF: output_filename = [local_filename]
+ * */
+void handle_i() 
 {
 	char *host_and_path	= url + strlen(URL_PREFIX);
-	printf("host_and_path: %s\n", host_and_path);
+	char host_and_path_copy[strlen(host_and_path)];
+	strcpy(host_and_path_copy, host_and_path);
 
+	// 1. Get hostname
 	char *hostname = strtok(host_and_path, PATH_DELIMITER);
-	printf("Host name: %s\n", hostname);
-	char *path = strtok(NULL, PATH_DELIMITER);
+	printf("%s hostname = %s\n", OPTION_I_PREFIX, hostname);
 
-	// Print other tokens in the path
-	while (path != NULL ) {
-		printf( "PATH: %s\n", path );
-		path = strtok(NULL, PATH_DELIMITER);
-	}
+	// 2. Get url filename
+	char *url_filename = host_and_path_copy + strlen(hostname);
+	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
+
+	// 3. Output filename already set
+	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);
+	
 }
 
 
@@ -141,14 +152,17 @@ void check_required_args()
 
 int main(int argc, char *argv[])
 {
+	printf("Starting command line-based web client...\n");
 	parse_args(argc, argv);
 	check_required_args();
 	
 	// * Handle -u: Make HTTP request using the provided URL
-	handle_u(url);
+	printf("\n========== Handling -u option ==========\n");
+	handle_u();
 	
 	// * Handle -i: Print information about the given command line parameters to standard output
-	handle_i(url);
+	printf("\n========== Handling -i option ==========\n");
+	handle_i();
 
 	// * Handle -c: Print the HTTP request sent by the web client to the web server to standard output
 
