@@ -137,6 +137,22 @@ void check_required_args()
 }
 
 
+int sendMsg(int sockfd, char *msg, size_t msgSize)
+{
+    // unsigned int convertedNum = htonl(msgSize);
+    // if (write(sockfd, &convertedNum, sizeof(convertedNum)) < 0) { //Send number of bytes
+    //     perror("error writing to socket");
+    //     return -1;
+    // }
+
+    if (write(sockfd, msg, msgSize) < 0) { //Send bytes
+        perror("error writing to socket");
+        return -1;
+    }
+
+    return 0;
+}
+
 /**
  * Sends a HTTP GET request to the server.
  * */
@@ -183,39 +199,32 @@ int send_http_request()
 	snprintf(http_request, BUFLEN, 
 		"GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
 
-	printf("\n\%s\n", http_request);
-	// Write the request
-	if (write(sd, http_request, strlen(http_request))>= 0) 
+	printf("\nHere is the request:\n\%s\n", http_request);
+
+	if (sendMsg(sd, http_request, BUFLEN) != 0) {
+        close(sd);
+        return 1;
+    }
+    printf("MESSAGE SENT. Printing HTTP response...\n\n");
+
+	// TODO: Fix segmentation fault
+	// Read the response
+	while ((n = read(sd, buffer, BUFLEN)) > 0) 
 	{
-		/// Read the response
-		while ((n = read(sd, buffer, BUFLEN)) > 0) 
+		buffer[n] = '\0';
+
+		if(fputs(buffer, stdout) == EOF)
 		{
-			buffer[n] = '\0';
+			printf("fputs() error\n");
+		}
 
-			if(fputs(buffer, stdout) == EOF)
-			{
-				printf("fputs() error\n");
-			}
+		/// Remove the trailing chars
+		ptr = strstr(buffer, "\r\n\r\n");
 
-			/// Remove the trailing chars
-			ptr = strstr(buffer, "\r\n\r\n");
+		// check len for OutResponse here ?
+		snprintf(http_response, BUFLEN,"%s", ptr);
+	}          
 
-			// check len for OutResponse here ?
-			snprintf(http_response, BUFLEN,"%s", ptr);
-		}          
-	}
-
-    /* snarf whatever server provides and print it */
-	// printf("Snarfing whatver server provides...\n");
-    // memset (buffer, 0x0, BUFLEN);
-    // ret = read (sd, buffer, BUFLEN - 1);
-
-    // if (ret < 0)
-    //     errexit ("reading error", NULL);
-
-    // fprintf (stdout, "%s\n", buffer);
-	// printf("PRINTED BUFFER\n");
-            
     close (sd);
     exit (0);
 }

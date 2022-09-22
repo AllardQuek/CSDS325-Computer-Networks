@@ -19,5 +19,17 @@ int main (int argc, char *argv [])
 		printf( "PATH: %s\n", path );
 		path = strtok(NULL, PATH_DELIMITER);
 	}
+
+	// * Snarfing
+	/* snarf whatever server provides and print it */
+	printf("Snarfing whatver server provides...\n");
+    memset (buffer, 0x0, BUFLEN);
+    ret = read (sd, buffer, BUFLEN - 1);
+
+    if (ret < 0)
+        errexit ("reading error", NULL);
+
+    fprintf (stdout, "%s\n", buffer);
+	printf("PRINTED BUFFER\n");
 }
 
