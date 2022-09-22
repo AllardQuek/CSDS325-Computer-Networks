@@ -24,7 +24,10 @@ static bool is_option_i = false;
 static bool is_option_c = false;
 static bool is_option_s = false;
 static char *url;
+static char *hostname;
+static char *url_filename;
 static char *output_filename;
+static char *user_agent = "TEMP_USER_AGENT";
 static char *PATH_DELIMITER = "/";
 
 // Define constants
@@ -32,7 +35,7 @@ static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
 static const char *ERROR_PREFIX = "ERROR: ";
 static const char *OPTION_I_PREFIX = "INF:";
-// static const char *OPTION_C_PREFIX = "REQ:";
+static const char *OPTION_C_PREFIX = "REQ:";
 // static const char *OPTION_S_PREFIX = "RSP: ";
 
 /**
@@ -138,10 +141,10 @@ void handle_i()
 	strcpy(host_and_path_copy, host_and_path);
 
 	// 1. Get hostname
-	char *hostname = strtok(host_and_path, PATH_DELIMITER);
+	hostname = strtok(host_and_path, PATH_DELIMITER);
 
 	// 2. Get url filename
-	char *url_filename = host_and_path_copy + strlen(hostname);
+	url_filename = host_and_path_copy + strlen(hostname);
 	if (strlen(url_filename) == 0) {
 		strcpy(url_filename, PATH_DELIMITER);
 	}
@@ -151,12 +154,16 @@ void handle_i()
 	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);	// 3. Output filename already set
 }
 
+
 /**
- * Handles the -c option.
+ * Handles the -c option. 
+ * Note that HTTP request must still be made regardless of this option.
  * */
 void handle_c() 
 {
-	// TODO
+	printf("%s GET %s HTTP/1.0 \r\n", OPTION_C_PREFIX, url_filename);
+	printf("%s Host: %s\r\n", OPTION_C_PREFIX, hostname);
+	printf("%s User-Agent: = %s\r\n", OPTION_C_PREFIX, user_agent);
 }
 
 
@@ -169,23 +176,25 @@ int main(int argc, char *argv[])
 	// * Handle -u: Make HTTP request using the provided URL
 	printf("\n========== Handling -u option ==========\n");
 	handle_u();
+
+	// * Handle -o: Output content from HTTP response to the provided file
 	
-	// * Handle -i: Print information about the given command line parameters to standard output
+	// * Handle optional arguments in specified order; simply to print output.
+	// Handle -i: Print information about the given command line parameters to standard output
 	if (is_option_i) {
 		printf("\n========== Handling -i option ==========\n");
 		handle_i();
 	}
 
-	// * Handle -c: Print the HTTP request sent by the web client to the web server to standard output
+	// Handle -c: Print the HTTP request sent by the web client to the web server to standard output
 	if (is_option_c) {
 		printf("\n========== Handling -c option ==========\n");
 		handle_c();
 	}
 
-	// * Handle -s: Print the HTTP response header received from the web server to standard output
+	// Handle -s: Print the HTTP response header received from the web server to standard output
 	
 
-	// * Handle -o: Output content from HTTP response to the provided file
 
 	exit(0);
 }
