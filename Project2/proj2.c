@@ -1,22 +1,39 @@
 /**
- * CSDS 325 Project 2
+ * CSDS 325 Project 2 (2022 Fall Semester)
+ * 
+ * Author: Allard Quek
  *
  * The second project of the semester involves writing a simple command line-based web client.
- * The aim of this project is
- * (i) to get your feet wet with writing C/C++,
- * (ii) to write a program that exchanges information with another computer over a network and
- * (iii) to start concretely thinking about protocols.
+ * The aim of this project is to
+ * (i) get your feet wet with writing C/C++,
+ * (ii) write a program that exchanges information with another computer over a network and
+ * (iii) start concretely thinking about protocols.
  * */
 
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-unsigned short cmd_line_flags = 0;
-char *msg = NULL;
+// Define option flags
+static bool is_option_u = false;
+static bool is_option_o = false;
+static bool is_option_i = false;
+static bool is_option_c = false;
+static bool is_option_s = false;
+static char *url;
+static char *output_filename;
+
+// Define constants
+static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
+static const char *ERROR_PREFIX = "ERROR: ";
+static const char *PATH_DELIMITER = "/";
+// static const char *OPTION_I_PREFIX = "INF:";
+// static const char *OPTION_C_PREFIX = "REQ:";
+// static const char *OPTION_S_PREFIX = "RSP: ";
 
 /**
  * Prints usage information for this program.
@@ -34,62 +51,111 @@ void usage(char *progname)
 
 
 /**
- * Handles the -u option.
+ * Keeps track of which options are being passed.
  * */
-void handle_u(char* optarg) 
+void parse_args(int argc, char *argv []) 
 {
-	printf("HANDLING OPTION U...\n");
-	printf("url passed: %s\n", optarg);
-	if (strncasecmp(optarg, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
-		printf("url must start with %s\n", URL_PREFIX);
-		exit(1);
+	int opt;
+	
+	// put ':' in the starting of the string so that program can distinguish between '?' and ':'
+	while((opt = getopt(argc, argv, OPT_STRING)) != -1)
+	{	
+		switch(opt)
+		{
+			case 'u':
+				url = optarg;
+				is_option_u = true;
+				break;
+			case 'o':
+				output_filename = optarg;
+				is_option_o = true;
+				break;
+			case 'i':
+				is_option_i = true;
+				break;
+			case 'c':
+				is_option_c = true;
+				break;
+			case 's':
+				is_option_s = true;
+				break;
+			case ':':
+				printf("%s Option %c is missing a value \n", ERROR_PREFIX, optopt);
+				break;
+			case '?':
+				printf("%s Unknown option %c\n", ERROR_PREFIX, optopt);
+				usage(argv[0]);
+				break;
+		}
 	}
 
-	printf("So far so good!\n");
+	// optind is for the extra arguments which are not parsed
+	for(; optind < argc; optind++){	
+		printf("extra arguments: %s\n", argv[optind]);
+	}
+}
+
+
+/**
+ * Handles the -u option.
+ * */
+void handle_u(char* url) 
+{
+	// We should check for valid URL as long as it was passed in
+	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
+		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
+		exit(1);
+	}
+	printf("Valid URL received: %s\n", url);
+}
+
+
+void handle_i(char* url) 
+{
+	char *host_and_path	= url + strlen(URL_PREFIX);
+	printf("host_and_path: %s\n", host_and_path);
+
+	char *hostname = strtok(host_and_path, PATH_DELIMITER);
+	printf("Host name: %s\n", hostname);
+	char *path = strtok(NULL, PATH_DELIMITER);
+
+	// Print other tokens in the path
+	while (path != NULL ) {
+		printf( "PATH: %s\n", path );
+		path = strtok(NULL, PATH_DELIMITER);
+	}
+}
+
+
+/**
+ * Exits if required arguments are not set to true.
+ * */
+void check_required_args() 
+{
+	if (!is_option_u || !is_option_o) {
+		printf("%s Required options: -u -o\n", ERROR_PREFIX);
+		exit(1);
+	}
 }
 
 
 int main(int argc, char *argv[])
 {
-	int opt;
+	parse_args(argc, argv);
+	check_required_args();
 	
-	// put ':' in the starting of the
-	// string so that program can
-	//distinguish between '?' and ':'
-	while((opt = getopt(argc, argv, ":u:o:csi")) != -1)
-	{
-		switch(opt)
-		{
-			case 'u':
-				handle_u(optarg);
-				break;
-			case 'o':
-				printf("filename: %s\n", optarg);
-				break;
-			case 'i':
-				printf("option: i\n");
-				break;
-			case 'c':
-				printf("option: c\n");
-				break;
-			case 's':
-				printf("option: s\n");
-				break;
-			case ':':
-				printf("option %c is missing a value \n", optopt);
-				break;
-			case '?':
-				printf("unknown option: %c\n", optopt);
-				usage(argv[0]);
-				break;
-		}
-	}
+	// * Handle -u: Make HTTP request using the provided URL
+	handle_u(url);
 	
-	// optind is for the extra arguments
-	// which are not parsed
-	for(; optind < argc; optind++){	
-		printf("extra arguments: %s\n", argv[optind]);
-	}
+	// * Handle -i: Print information about the given command line parameters to standard output
+	handle_i(url);
+
+	// * Handle -c: Print the HTTP request sent by the web client to the web server to standard output
+
+	// * Handle -s: Print the HTTP response header received from the web server to standard output
 	
+
+	// * Handle -o: Output content from HTTP response to the provided file
+
 	exit(0);
 }
