@@ -17,12 +17,27 @@
 #include <string.h>
 #include <unistd.h>
 
+// Added networking libraries
+#include <netdb.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+// Define constant macros (from sample code)
+#define ERROR 1
+#define REQUIRED_ARGC 3
+#define HOST_POS 1
+#define HTTP_PORT 80
+#define PROTOCOL "tcp"
+#define BUFLEN 1024
+
 // Define option flags
 static bool is_option_u = false;
 static bool is_option_o = false;
 static bool is_option_i = false;
 static bool is_option_c = false;
 static bool is_option_s = false;
+
+// Define pointers for required information
 static char *url;
 static char *hostname;
 static char *url_filename;
@@ -50,6 +65,16 @@ void usage(char *progname)
   fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
   fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
   exit(1);
+}
+
+/**
+ * Prints error message to stderr and exits the program.
+ * */
+int errexit (char *format, char *arg)
+{
+    fprintf (stderr,format,arg);
+    fprintf (stderr,"\n");
+    exit (ERROR);
 }
 
 
@@ -112,6 +137,62 @@ void check_required_args()
 
 
 /**
+ * Sends a HTTP GET request to the server.
+ * */
+int send_http_request()
+{
+    struct sockaddr_in sin;
+    struct hostent *hinfo;
+    struct protoent *protoinfo;
+    char buffer [BUFLEN];
+    int sd, ret;
+
+	/* lookup the hostname */
+	printf("Looking up %s...\n", hostname);
+    hinfo = gethostbyname(hostname);
+    if (hinfo == NULL)
+        errexit ("cannot find name: %s", hostname);
+
+    /* set endpoint information */
+	printf("Setting endpoint info...\n");
+    memset ((char *)&sin, 0x0, sizeof (sin));
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(HTTP_PORT);
+    memcpy ((char *)&sin.sin_addr,hinfo->h_addr,hinfo->h_length);
+
+    if ((protoinfo = getprotobyname (PROTOCOL)) == NULL)
+        errexit ("cannot find protocol information for %s", PROTOCOL);
+
+    /* allocate a socket */
+    /* would be SOCK_DGRAM for UDP */
+	printf("Allocating a socket...\n");
+    sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
+    if (sd < 0)
+        errexit("cannot create socket\n",NULL);
+
+    /* connect the socket */
+	printf("Connecting the socket...\n");
+    if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+        errexit ("cannot connect", NULL);
+
+    /* snarf whatever server provides and print it */
+	printf("Snarfing whatver server provides...\n");
+    memset (buffer, 0x0, BUFLEN);
+	// TODO: Fix hanging
+    ret = read (sd, buffer, BUFLEN - 1);
+	printf("DONE READING\n");
+
+    if (ret < 0)
+        errexit ("reading error", NULL);
+
+    fprintf (stdout, "%s\n", buffer);
+            
+    close (sd);
+    exit (0);
+}
+
+
+/**
  * Handles the -u option.
  * */
 void handle_u() 
@@ -121,7 +202,23 @@ void handle_u()
 		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
 		exit(1);
 	}
+
+	char *host_and_path	= url + strlen(URL_PREFIX);
+	char host_and_path_copy[strlen(host_and_path)];
+	strcpy(host_and_path_copy, host_and_path);
 	printf("Valid URL received: %s\n", url);
+
+	// 1. Get hostname
+	hostname = strtok(host_and_path, PATH_DELIMITER);
+
+	// 2. Get url filename
+	url_filename = host_and_path_copy + strlen(hostname);
+	if (strlen(url_filename) == 0) {
+		strcpy(url_filename, PATH_DELIMITER);
+	}
+
+	printf("Sending HTTP request...\n");
+	send_http_request();
 }
 
 
@@ -136,19 +233,6 @@ void handle_u()
  * */
 void handle_i() 
 {
-	char *host_and_path	= url + strlen(URL_PREFIX);
-	char host_and_path_copy[strlen(host_and_path)];
-	strcpy(host_and_path_copy, host_and_path);
-
-	// 1. Get hostname
-	hostname = strtok(host_and_path, PATH_DELIMITER);
-
-	// 2. Get url filename
-	url_filename = host_and_path_copy + strlen(hostname);
-	if (strlen(url_filename) == 0) {
-		strcpy(url_filename, PATH_DELIMITER);
-	}
-
 	printf("%s hostname = %s\n", OPTION_I_PREFIX, hostname);
 	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
 	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);	// 3. Output filename already set
@@ -193,8 +277,6 @@ int main(int argc, char *argv[])
 	}
 
 	// Handle -s: Print the HTTP response header received from the web server to standard output
-	
-
 
 	exit(0);
 }
