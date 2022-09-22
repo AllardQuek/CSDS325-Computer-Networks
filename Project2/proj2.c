@@ -97,6 +97,18 @@ void parse_args(int argc, char *argv [])
 
 
 /**
+ * Exits if required arguments are not set to true.
+ * */
+void check_required_args() 
+{
+	if (!is_option_u || !is_option_o) {
+		printf("%s Required options: -u -o\n", ERROR_PREFIX);
+		exit(1);
+	}
+}
+
+
+/**
  * Handles the -u option.
  * */
 void handle_u() 
@@ -108,6 +120,7 @@ void handle_u()
 	}
 	printf("Valid URL received: %s\n", url);
 }
+
 
 /**
  * Handles the -i option.
@@ -138,16 +151,12 @@ void handle_i()
 	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);	// 3. Output filename already set
 }
 
-
 /**
- * Exits if required arguments are not set to true.
+ * Handles the -c option.
  * */
-void check_required_args() 
+void handle_c() 
 {
-	if (!is_option_u || !is_option_o) {
-		printf("%s Required options: -u -o\n", ERROR_PREFIX);
-		exit(1);
-	}
+	// TODO
 }
 
 
@@ -162,10 +171,16 @@ int main(int argc, char *argv[])
 	handle_u();
 	
 	// * Handle -i: Print information about the given command line parameters to standard output
-	printf("\n========== Handling -i option ==========\n");
-	handle_i();
+	if (is_option_i) {
+		printf("\n========== Handling -i option ==========\n");
+		handle_i();
+	}
 
 	// * Handle -c: Print the HTTP request sent by the web client to the web server to standard output
+	if (is_option_c) {
+		printf("\n========== Handling -c option ==========\n");
+		handle_c();
+	}
 
 	// * Handle -s: Print the HTTP response header received from the web server to standard output
 	
