@@ -126,18 +126,16 @@ void handle_i()
 
 	// 1. Get hostname
 	char *hostname = strtok(host_and_path, PATH_DELIMITER);
-	printf("%s hostname = %s\n", OPTION_I_PREFIX, hostname);
 
 	// 2. Get url filename
 	char *url_filename = host_and_path_copy + strlen(hostname);
 	if (strlen(url_filename) == 0) {
 		strcpy(url_filename, PATH_DELIMITER);
 	}
-	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
 
-	// 3. Output filename already set
-	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);
-	
+	printf("%s hostname = %s\n", OPTION_I_PREFIX, hostname);
+	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
+	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);	// 3. Output filename already set
 }
 
 
