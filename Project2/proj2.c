@@ -25,12 +25,12 @@ static bool is_option_c = false;
 static bool is_option_s = false;
 static char *url;
 static char *output_filename;
+static char *PATH_DELIMITER = "/";
 
 // Define constants
 static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
 static const char *ERROR_PREFIX = "ERROR: ";
-static const char *PATH_DELIMITER = "/";
 static const char *OPTION_I_PREFIX = "INF:";
 // static const char *OPTION_C_PREFIX = "REQ:";
 // static const char *OPTION_S_PREFIX = "RSP: ";
@@ -130,6 +130,9 @@ void handle_i()
 
 	// 2. Get url filename
 	char *url_filename = host_and_path_copy + strlen(hostname);
+	if (strlen(url_filename) == 0) {
+		strcpy(url_filename, PATH_DELIMITER);
+	}
 	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
 
 	// 3. Output filename already set
