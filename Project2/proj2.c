@@ -38,6 +38,7 @@ void usage(char *progname)
  * */
 void handle_u(char* optarg) 
 {
+	printf("HANDLING OPTION U...\n");
 	printf("url passed: %s\n", optarg);
 	if (strncasecmp(optarg, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
 		printf("url must start with %s\n", URL_PREFIX);
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
 				printf("option: s\n");
 				break;
 			case ':':
-				printf("option is missing a value\n");
+				printf("option %c is missing a value \n", optopt);
 				break;
 			case '?':
 				printf("unknown option: %c\n", optopt);
@@ -90,5 +91,5 @@ int main(int argc, char *argv[])
 		printf("extra arguments: %s\n", argv[optind]);
 	}
 	
-	return 0;
+	exit(0);
 }
