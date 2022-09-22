@@ -43,15 +43,15 @@ static char *hostname;
 static char *url_filename;
 static char *output_filename;
 static char *user_agent = "TEMP_USER_AGENT";
-static char *PATH_DELIMITER = "/";
+static char http_request[BUFLEN];
+static char *http_response;
 
 // Define constants
 static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
+static const char *PATH_DELIMITER = "/";
 static const char *ERROR_PREFIX = "ERROR: ";
-static const char *OPTION_I_PREFIX = "INF:";
-static const char *OPTION_C_PREFIX = "REQ:";
-// static const char *OPTION_S_PREFIX = "RSP: ";
+
 
 /**
  * Prints usage information for this program.
@@ -66,6 +66,7 @@ void usage(char *progname)
   fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
   exit(1);
 }
+
 
 /**
  * Prints error message to stderr and exits the program.
@@ -145,7 +146,10 @@ int send_http_request()
     struct hostent *hinfo;
     struct protoent *protoinfo;
     char buffer [BUFLEN];
-    int sd, ret;
+	// int ret;
+    int sd;
+	char *ptr;
+	size_t n;
 
 	/* lookup the hostname */
 	printf("Looking up %s...\n", hostname);
@@ -175,17 +179,42 @@ int send_http_request()
     if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
         errexit ("cannot connect", NULL);
 
+	/// Form request
+	snprintf(http_request, BUFLEN, 
+		"GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
+
+	printf("\n\%s\n", http_request);
+	// Write the request
+	if (write(sd, http_request, strlen(http_request))>= 0) 
+	{
+		/// Read the response
+		while ((n = read(sd, buffer, BUFLEN)) > 0) 
+		{
+			buffer[n] = '\0';
+
+			if(fputs(buffer, stdout) == EOF)
+			{
+				printf("fputs() error\n");
+			}
+
+			/// Remove the trailing chars
+			ptr = strstr(buffer, "\r\n\r\n");
+
+			// check len for OutResponse here ?
+			snprintf(http_response, BUFLEN,"%s", ptr);
+		}          
+	}
+
     /* snarf whatever server provides and print it */
-	printf("Snarfing whatver server provides...\n");
-    memset (buffer, 0x0, BUFLEN);
-	// TODO: Fix hanging
-    ret = read (sd, buffer, BUFLEN - 1);
-	printf("DONE READING\n");
+	// printf("Snarfing whatver server provides...\n");
+    // memset (buffer, 0x0, BUFLEN);
+    // ret = read (sd, buffer, BUFLEN - 1);
 
-    if (ret < 0)
-        errexit ("reading error", NULL);
+    // if (ret < 0)
+    //     errexit ("reading error", NULL);
 
-    fprintf (stdout, "%s\n", buffer);
+    // fprintf (stdout, "%s\n", buffer);
+	// printf("PRINTED BUFFER\n");
             
     close (sd);
     exit (0);
@@ -233,21 +262,20 @@ void handle_u()
  * */
 void handle_i() 
 {
-	printf("%s hostname = %s\n", OPTION_I_PREFIX, hostname);
-	printf("%s url_filename = %s\n", OPTION_I_PREFIX, url_filename);
-	printf("%s output_filename = %s\n", OPTION_I_PREFIX, output_filename);	// 3. Output filename already set
+	printf("INF: hostname = %s\n", hostname);
+	printf("INF: url_filename = %s\n", url_filename);
+	printf("INF: output_filename = %s\n", output_filename);
 }
 
 
 /**
- * Handles the -c option. 
+ * Handles the -c option. (local version)
  * Note that HTTP request must still be made regardless of this option.
  * */
 void handle_c() 
 {
-	printf("%s GET %s HTTP/1.0 \r\n", OPTION_C_PREFIX, url_filename);
-	printf("%s Host: %s\r\n", OPTION_C_PREFIX, hostname);
-	printf("%s User-Agent: = %s\r\n", OPTION_C_PREFIX, user_agent);
+	char *final_output = "REQ: GET %s HTTP/1.0 \r\nREQ: Host: %s\r\nREQ: User-Agent: = %s\r\n";
+	printf(final_output, url_filename, hostname, user_agent);
 }
 
 
