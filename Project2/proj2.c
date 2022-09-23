@@ -44,7 +44,6 @@ static bool is_option_v = false;
 
 // Define pointers for required information
 static char http_request[BUFLEN];
-static char http_response[BUFLEN];
 static char http_headers[BUFLEN];
 static char *http_content;
 
@@ -145,17 +144,12 @@ void check_required_args()
 }
 
 
-/**
- * Sends a HTTP GET request to the server.
- * */
-void send_http_request(char *hostname, char *url_filename)
+int connect_to_socket(char *hostname)
 {
-    struct sockaddr_in sin;
+	struct sockaddr_in sin;
     struct hostent *hinfo;
     struct protoent *protoinfo;
     int sd;
-	char recvline[BUFLEN];
-	int bytes_read;
 
 	// Lookup the hostname
     hinfo = gethostbyname(hostname);
@@ -177,13 +171,20 @@ void send_http_request(char *hostname, char *url_filename)
     if (sd < 0)
         errexit("Cannot create socket!\n",NULL);
 
-    // Connect the socket
-    if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+	if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
-        errexit ("Cannot connect!", NULL);
+        errexit("Cannot connect!", NULL);
     }
 
-	// * Send HTTP request to server
+	return sd;
+}
+
+
+/**
+ * Sends a HTTP GET request to the server.
+ * */
+void send_http_request(int sd, char *hostname, char *url_filename)
+{
 	snprintf(http_request, BUFLEN, "GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
 	size_t request_size = strlen(http_request);
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
@@ -192,6 +193,15 @@ void send_http_request(char *hostname, char *url_filename)
 	if (write(sd, http_request, request_size) != request_size) { //Send bytes
         errexit("Error writing to socket!", NULL);
     }
+}
+
+
+char *read_http_response(int sd)
+{
+	char recvline[BUFLEN];
+	char *http_response = malloc(BUFLEN);
+
+	int bytes_read;
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
@@ -208,7 +218,7 @@ void send_http_request(char *hostname, char *url_filename)
 	if (bytes_read < 0)
 		errexit("Error reading from socket!", NULL);
 
-    close(sd);
+	return http_response;
 }
 
 
@@ -263,22 +273,24 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 		errexit("Url must start with %s", URL_PREFIX);
 	
 	printv("Valid URL received: %s\n", url);
+
+	// * Split url into hostname and url_filename
 	set_host_and_path(url, host_and_path);
 	set_hostname(*host_and_path, hostname);
 	set_url_filename(url_filename, *host_and_path, *hostname);
-	// connect_to_socket(*hostname, *url_filename);
-	// send_http_request(*hostname, *url_filename);
-	// receive_http_response();
-	
-	// Pass the pointer to the required values, not the double pointers
-	send_http_request(*hostname, *url_filename);
 
-	// * 3. Get content and headers from HTTP response
-	http_content = strstr(http_response, END_OF_HEADER);	
+	// * Make HTTP request
+	// Pass the pointer to the required values, not the double pointers
+	int sd = connect_to_socket(*hostname);
+	send_http_request(sd, *hostname, *url_filename);
+	char *http_response = read_http_response(sd);
+	close(sd);
 	
-	// Remember: content will include end of header (need to strip new line)
-	http_content += strlen(END_OF_HEADER);
+	// * Get content and headers from HTTP response
+	// Remember: content will include end of header (need to strip end of header)
+	http_content = strstr(http_response, END_OF_HEADER) + strlen(END_OF_HEADER);	
 	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+	free(http_response);
 }
 
 
