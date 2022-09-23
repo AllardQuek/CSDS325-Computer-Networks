@@ -24,12 +24,15 @@
 
 // Define constant macros (from sample code)
 #define ERROR 1
-#define REQUIRED_ARGC 3
-#define HOST_POS 1
 #define HTTP_PORT 80
 #define PROTOCOL "tcp"
 #define BUFLEN 1024
 #define DEFAULT_STR_LEN 128
+#define URL_PREFIX "http://"
+#define ERROR_PREFIX "ERROR: "
+#define PATH_DELIMITER "/"
+#define CRLF "\r\n"
+#define END_OF_HEADER "\r\n\r\n"
 
 // Define option flags
 static bool is_option_u = false;
@@ -48,14 +51,8 @@ static char http_response[BUFLEN];
 static char http_headers[BUFLEN];
 static char *http_content;
 
-// Define constants
+// ? Cannot use #define ?
 static const char *OPT_STRING = ":u:o:csi";
-static const char *URL_PREFIX = "http://";
-static const char *PATH_DELIMITER = "/";
-static const char ERROR_PREFIX[8] = "ERROR: ";
-static const char *CRLF = "\r\n";
-static const char *END_OF_HEADER = "\r\n\r\n";
-
 
 
 /**
@@ -63,13 +60,13 @@ static const char *END_OF_HEADER = "\r\n\r\n";
  * */
 void usage(char *progname)
 {
-  fprintf(stderr, "%s -u URL [-i] [-c] [-s] -o filename \n", progname);
-  fprintf(stderr, "   -u <url>         URL the web client will access\n");
-  fprintf(stderr, "   -o <filename>    Filename where the downloaded contents of the supplied URL will be written\n");
-  fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
-  fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
-  fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
-  exit(1);
+	fprintf(stderr, "%s -u URL [-i] [-c] [-s] -o filename \n", progname);
+	fprintf(stderr, "   -u <url>         URL the web client will access\n");
+	fprintf(stderr, "   -o <filename>    Filename where the downloaded contents of the supplied URL will be written\n");
+	fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
+	fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
+	fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
+	exit(1);
 }
 
 
@@ -215,8 +212,6 @@ void send_http_request()
  * */
 void handle_u() 
 {
-	char host_and_path[DEFAULT_STR_LEN];
-
 	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
 		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
@@ -224,6 +219,7 @@ void handle_u()
 	}
 
 	printf("Valid URL received: %s\n", url);
+	char host_and_path[DEFAULT_STR_LEN];
 	strcpy(host_and_path, url + strlen(URL_PREFIX));
 
 	// * 1. Get hostname
