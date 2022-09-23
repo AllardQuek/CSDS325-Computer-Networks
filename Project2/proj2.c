@@ -33,6 +33,7 @@
 #define PATH_DELIMITER "/"
 #define CRLF "\r\n"
 #define END_OF_HEADER "\r\n\r\n"
+#define SUCCESS_CODE "200 OK"
 
 // Define option flags
 static bool is_option_u = false;
@@ -165,7 +166,9 @@ void send_http_request(char *hostname, char *url_filename)
 
     // Connect the socket
     if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    {
         errexit ("Cannot connect!", NULL);
+    }
 
 	// * Send HTTP request to server
 	snprintf(http_request, BUFLEN, 
@@ -242,10 +245,17 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 
 /**
  * Handles the -o option.
- * Writes HTTP response content to the provided file.
+ * Writes HTTP response content to the provided file, if response status was 200 OK.
  * */
 void handle_o(char *output_filename)
 {
+    // Check if status code was 200 OK
+    if (strstr(http_headers, SUCCESS_CODE) == NULL)
+    {
+        printf("Response from server was not OK. Output will not be written to file.\n");
+        return;
+    }
+
 	// 1. Open file for writing
 	FILE *fp = fopen(output_filename, "w");
 	if (fp == NULL) {
@@ -331,8 +341,6 @@ int main(int argc, char *argv[])
 
 	printf("Starting command-line based web client...\n");
 	parse_args(argc, argv, &url, &output_filename);
-	printf("url = %s\n", url);
-	printf("output_filename = %s\n", output_filename);
 	check_required_args();
 	
 	// Handle required options: -u and -o
