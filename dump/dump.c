@@ -64,6 +64,17 @@ int main (int argc, char *argv [])
 	for(; optind < argc; optind++){	
 		printf("extra arguments: %s\n", argv[optind]);
 	}
+
+    // * Attempt to malloc and initalize string
+    url = malloc(strlen(optarg) + 1);
+
+    Get the elements of the array
+    for (int i = 0; i < strlen(optarg); i++) {
+        url[i] = optarg[i];
+    }
+
+    url pointer should point to address of local_url
+    *url = local_url;
 }
 
 

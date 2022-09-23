@@ -42,10 +42,8 @@ static bool is_option_c = false;
 static bool is_option_s = false;
 
 // Define pointers for required information
-static char url[DEFAULT_STR_LEN];
 static char hostname[DEFAULT_STR_LEN];
 static char url_filename[DEFAULT_STR_LEN];
-static char output_filename[DEFAULT_STR_LEN];
 static char http_request[BUFLEN];
 static char http_response[BUFLEN];
 static char http_headers[BUFLEN];
@@ -85,9 +83,11 @@ int errexit(char *format, char *arg)
 /**
  * Keeps track of which options are being passed.
  * */
-void parse_args(int argc, char *argv []) 
+void parse_args(int argc, char *argv [], char **url, char **output_filename) 
 {
 	int opt;
+	// char *local_url;
+	// char *local_output_filename;
 	
 	// put ':' in the starting of the string so that program can distinguish between '?' and ':'
 	while((opt = getopt(argc, argv, OPT_STRING)) != -1)
@@ -95,11 +95,11 @@ void parse_args(int argc, char *argv [])
 		switch(opt)
 		{
 			case 'u':
-				strcpy(url, optarg);
+				*url = optarg;
 				is_option_u = true;
 				break;
 			case 'o':
-				strcpy(output_filename, optarg);
+				*output_filename = optarg;
 				is_option_o = true;
 				break;
 			case 'i':
@@ -210,7 +210,7 @@ void send_http_request()
  * Handles the -u option.
  * Makes HTTP request using the provided URL
  * */
-void handle_u() 
+void handle_u(char *url) 
 {
 	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
@@ -249,7 +249,7 @@ void handle_u()
  * Handles the -o option.
  * Writes HTTP response content to the provided file.
  * */
-void handle_o()
+void handle_o(char *output_filename)
 {
 	// 1. Open file for writing
 	FILE *fp = fopen(output_filename, "w");
@@ -276,7 +276,7 @@ void handle_o()
  * INF: web_filename = [url_filename]
  * INF: output_filename = [local_filename]
  * */
-void handle_i() 
+void handle_i(char *output_filename) 
 {
 	printf("INF: hostname = %s\n", hostname);
 	printf("INF: url_filename = %s\n", url_filename);
@@ -325,25 +325,30 @@ void handle_s()
 	}
 }
 
+
 /**
  * Main entry point of program.
  * */
 int main(int argc, char *argv[])
 {
-	printf("Starting command line-based web client...\n");
-	parse_args(argc, argv);
+	char *url;
+	char *output_filename;
+	printf("Starting command-line based web client...\n");
+	parse_args(argc, argv, &url, &output_filename);
+	printf("url = %s\n", url);
+	printf("output_filename = %s\n", output_filename);
 	check_required_args();
 	
 	// Handle required options: -u and -o
 	printf("\n========== Handling -u option ==========\n");
-	handle_u();
+	handle_u(url);
 	printf("\n========== Handling -o option ==========\n");
-	handle_o();
+	handle_o(output_filename);
 
 	// Handle optional arguments in specified order; simply to print output.
 	if (is_option_i) {
 		printf("\n========== Handling -i option ==========\n");
-		handle_i();
+		handle_i(output_filename);
 	}
 
 	if (is_option_c) {
