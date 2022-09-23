@@ -48,6 +48,7 @@ static char http_headers[BUFLEN];
 static char *http_content;
 
 // ? Cannot use #define ?
+// put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":u:o:csi";
 
 
@@ -84,10 +85,7 @@ int errexit(char *format, char *arg)
 void parse_args(int argc, char *argv [], char **url, char **output_filename) 
 {
 	int opt;
-	// char *local_url;
-	// char *local_output_filename;
 	
-	// put ':' in the starting of the string so that program can distinguish between '?' and ':'
 	while((opt = getopt(argc, argv, OPT_STRING)) != -1)
 	{	
 		switch(opt)
@@ -182,6 +180,7 @@ void send_http_request(char *hostname, char *url_filename)
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
+	// ? What if the while loop is executed multiple times?
     while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
     {
 		strcpy(http_response, recvline);
