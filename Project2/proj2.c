@@ -123,11 +123,6 @@ void parse_args(int argc, char *argv [])
 				break;
 		}
 	}
-
-	// optind is for the extra arguments which are not parsed
-	for(; optind < argc; optind++){	
-		printf("extra arguments: %s\n", argv[optind]);
-	}
 }
 
 

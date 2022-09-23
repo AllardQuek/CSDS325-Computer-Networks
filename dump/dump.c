@@ -58,6 +58,12 @@ int main (int argc, char *argv [])
     }
     printf("# of printable characters: %.*s\n", (int)msgSize, http_response);
     free(http_response);
+
+
+    // * optind is for the extra arguments which are not parsed
+	for(; optind < argc; optind++){	
+		printf("extra arguments: %s\n", argv[optind]);
+	}
 }
 
 
@@ -103,3 +109,5 @@ void handle_c()
 	char *final_output = "REQ: GET %s HTTP/1.0 \r\nREQ: Host: %s\r\nREQ: User-Agent: = %s\r\n";
 	printf(final_output, url_filename, hostname, user_agent);
 }
+
+
