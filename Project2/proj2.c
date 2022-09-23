@@ -29,6 +29,7 @@
 #define HTTP_PORT 80
 #define PROTOCOL "tcp"
 #define BUFLEN 1024
+#define DEFAULT_STR_LEN 128
 
 // Define option flags
 static bool is_option_u = false;
@@ -38,10 +39,10 @@ static bool is_option_c = false;
 static bool is_option_s = false;
 
 // Define pointers for required information
-static char *url;
-static char *hostname;
-static char *url_filename;
-static char *output_filename;
+static char url[DEFAULT_STR_LEN];
+static char hostname[DEFAULT_STR_LEN];
+static char url_filename[DEFAULT_STR_LEN];
+static char output_filename[DEFAULT_STR_LEN];
 static char http_request[BUFLEN];
 static char http_response[BUFLEN];
 static char http_headers[BUFLEN];
@@ -97,11 +98,11 @@ void parse_args(int argc, char *argv [])
 		switch(opt)
 		{
 			case 'u':
-				url = optarg;
+				strcpy(url, optarg);
 				is_option_u = true;
 				break;
 			case 'o':
-				output_filename = optarg;
+				strcpy(output_filename, optarg);
 				is_option_o = true;
 				break;
 			case 'i':
@@ -219,22 +220,24 @@ void send_http_request()
  * */
 void handle_u() 
 {
+	char host_and_path[DEFAULT_STR_LEN];
+
 	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
 		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
 		exit(1);
 	}
 
-	char *host_and_path	= url + strlen(URL_PREFIX);
-	char host_and_path_copy[strlen(host_and_path)];
-	strcpy(host_and_path_copy, host_and_path);
 	printf("Valid URL received: %s\n", url);
+	strcpy(host_and_path, url + strlen(URL_PREFIX));
 
 	// * 1. Get hostname
-	hostname = strtok(host_and_path, PATH_DELIMITER);
+	char *token;
+	token = strtok(host_and_path, PATH_DELIMITER);
+	strcpy(hostname, token);
 
 	// * 2. Get url filename
-	url_filename = host_and_path_copy + strlen(hostname);
+	strcpy(url_filename, host_and_path + strlen(hostname));
 	if (strlen(url_filename) == 0) {
 		strcpy(url_filename, PATH_DELIMITER);
 	}
@@ -331,7 +334,9 @@ void handle_s()
 	}
 }
 
-
+/**
+ * Main entry point of program.
+ * */
 int main(int argc, char *argv[])
 {
 	printf("Starting command line-based web client...\n");
