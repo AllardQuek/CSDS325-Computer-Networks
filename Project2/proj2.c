@@ -178,7 +178,7 @@ void send_http_request(char *hostname, char *url_filename)
         errexit("Cannot create socket!\n",NULL);
 
     // Connect the socket
-    if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
         errexit ("Cannot connect!", NULL);
     }
@@ -208,7 +208,7 @@ void send_http_request(char *hostname, char *url_filename)
 	if (bytes_read < 0)
 		errexit("Error reading from socket!", NULL);
 
-    close (sd);
+    close(sd);
 }
 
 
@@ -223,6 +223,35 @@ int is_valid_url(char *url)
 	return 1;
 }
 
+
+void set_host_and_path(char *url, char **host_and_path)
+{
+	*host_and_path = url + strlen(URL_PREFIX);
+	printv("Host and path: %s\n", *host_and_path);
+}
+
+
+void set_hostname(char *host_and_path, char **hostname)
+{
+	// We should avoid moving the original pointers else the values would change
+	// This step seems to change `url` and `host_and_path` if *host_and_path is used instead
+	char *host_and_path_copy = strdup(host_and_path);
+	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
+	printv("Hostname: %s\n", *hostname);
+}
+
+
+void set_url_filename(char **url_filename, char *host_and_path, char *hostname) 
+{
+	*url_filename = host_and_path + strlen(hostname);
+	printv("URL filename: %s\n", *url_filename);
+
+	if (strlen(*url_filename) == 0) {
+		*url_filename = PATH_DELIMITER;
+	}
+}
+
+
 /**
  * Handles the -u option.
  * Makes HTTP request using the provided URL
@@ -234,25 +263,13 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 		errexit("Url must start with %s", URL_PREFIX);
 	
 	printv("Valid URL received: %s\n", url);
-
-	*host_and_path = url + strlen(URL_PREFIX);
-	printv("Host and path: %s\n", *host_and_path);
-
-	// * 1. Get hostname
-	// We should avoid moving the original pointers else the values would change
-	// This step seems to change `url` and `host_and_path` if *host_and_path is used instead
-	char *host_and_path_copy = strdup(*host_and_path);
-	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
-	printv("Hostname: %s\n", *hostname);
-
-	// * 2. Get url filename
-	*url_filename = *host_and_path + strlen(*hostname);
-	printv("URL filename: %s\n", *url_filename);
-
-	if (strlen(*url_filename) == 0) {
-		*url_filename = PATH_DELIMITER;
-	}
-
+	set_host_and_path(url, host_and_path);
+	set_hostname(*host_and_path, hostname);
+	set_url_filename(url_filename, *host_and_path, *hostname);
+	// connect_to_socket(*hostname, *url_filename);
+	// send_http_request(*hostname, *url_filename);
+	// receive_http_response();
+	
 	// Pass the pointer to the required values, not the double pointers
 	send_http_request(*hostname, *url_filename);
 
@@ -394,8 +411,8 @@ int main(int argc, char *argv[])
 	char *url, *output_filename;
 	char *host_and_path, *hostname, *url_filename;
 
-	printv("Starting command-line based web client...\n", NULL);
 	parse_args(argc, argv, &url, &output_filename);
+	printv("Starting command-line based web client...\n", NULL);
 	check_required_args();
 	handle_required_args(url, &host_and_path, &hostname, &url_filename, output_filename);
 	handle_optional_args(hostname, url_filename, output_filename);
