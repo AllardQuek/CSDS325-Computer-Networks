@@ -215,21 +215,18 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 	printf("Host and path: %s\n", *host_and_path);
 
 	// * 1. Get hostname
-	char *token;
+	// We should avoid moving the original pointers else the values would change
+	// This step seems to change `url` and `host_and_path` if *host_and_path is used instead
 	char *host_and_path_copy = strdup(*host_and_path);
-
-	// ? This step seems to change `url` and `host_and_path` if copy is not used
-	// token = strtok(*host_and_path, PATH_DELIMITER);
-	token = strtok(host_and_path_copy, PATH_DELIMITER);
-	*hostname = token;
+	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
 	printf("Hostname: %s\n", *hostname);
 
 	// * 2. Get url filename
 	*url_filename = *host_and_path + strlen(*hostname);
-	
 	printf("URL filename: %s\n", *url_filename);
+
 	if (strlen(*url_filename) == 0) {
-		strcpy(*url_filename, PATH_DELIMITER);
+		*url_filename = PATH_DELIMITER;
 	}
 
 	// Pass the pointer to the required values, not the double pointers
@@ -332,7 +329,6 @@ int main(int argc, char *argv[])
 {
 	char *url, *output_filename;
 	char *host_and_path, *hostname, *url_filename;
-	// http_response, http_content, http_headers
 
 	printf("Starting command-line based web client...\n");
 	parse_args(argc, argv, &url, &output_filename);
