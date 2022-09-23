@@ -27,13 +27,12 @@
 #define HTTP_PORT 80
 #define PROTOCOL "tcp"
 #define BUFLEN 1024
-#define DEFAULT_STR_LEN 128
 #define URL_PREFIX "http://"
 #define ERROR_PREFIX "ERROR: "
 #define PATH_DELIMITER "/"
 #define CRLF "\r\n"
 #define END_OF_HEADER "\r\n\r\n"
-#define SUCCESS_CODE "200 OK"
+#define SUCCESS_CODE "301"
 
 // Define option flags
 static bool is_option_u = false;
@@ -76,9 +75,7 @@ void usage(char *progname)
 void printv(char *msg_format, char *arg)
 {
 	if (is_option_v)
-	{
 		fprintf(stdout, msg_format, arg);
-	}
 }
 
 
@@ -216,19 +213,28 @@ void send_http_request(char *hostname, char *url_filename)
 
 
 /**
+ * Returns 1 (true) if URL starts with "http://"" (case-insensitive), else false.
+ * */
+int is_valid_url(char *url)
+{
+	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) 
+		return 0;
+
+	return 1;
+}
+
+/**
  * Handles the -u option.
  * Makes HTTP request using the provided URL
  * */
 void handle_u(char *url, char **host_and_path, char **hostname, char **url_filename) 
 {
 	printv("\n========== Handling -u option ==========\n", NULL);
-	// Check for valid URL as long as it was passed in
-	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
-		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
-		exit(1);
-	}
-
+	if (is_valid_url(url) == 0) 
+		errexit("Url must start with %s", URL_PREFIX);
+	
 	printv("Valid URL received: %s\n", url);
+
 	*host_and_path = url + strlen(URL_PREFIX);
 	printv("Host and path: %s\n", *host_and_path);
 
@@ -260,6 +266,22 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 
 
 /**
+ * Writes content to filename.
+ * */
+void write_to_file(char *filename, char *content) 
+{
+	FILE *fp = fopen(filename, "w");
+	if (fp == NULL) {
+		errexit("Error opening file!", NULL);
+	}
+
+	fprintf(fp, "%s", content);		// Write content to file
+	fclose(fp);						// Remember to close file
+	printv("Successfully saved HTTP content to %s!\n", filename);
+}
+
+
+/**
  * Handles the -o option.
  * Writes HTTP response content to the provided file, if response status was 200 OK.
  * */
@@ -273,18 +295,7 @@ void handle_o(char *output_filename)
         return;
     }
 
-	// 1. Open file for writing
-	FILE *fp = fopen(output_filename, "w");
-	if (fp == NULL) {
-		errexit("Error opening file!", NULL);
-	}
-
-	// 2. Write HTTP response content to file
-	fprintf(fp, "%s", http_content);
-
-	// 3. Remember to close file
-	fclose(fp);
-	printv("Successfully saved HTTP content to %s!\n", output_filename);
+	write_to_file(output_filename, http_content);
 }
 
 
@@ -347,22 +358,20 @@ void handle_s()
 
 
 /**
- * Main entry point of program.
+ * Handles required arguments -u and -o.
  * */
-int main(int argc, char *argv[])
+void handle_required_args(char *url, char **host_and_path, char **hostname, char **url_filename, char *output_filename)
 {
-	char *url, *output_filename;
-	char *host_and_path, *hostname, *url_filename;
-
-	printv("Starting command-line based web client...\n", NULL);
-	parse_args(argc, argv, &url, &output_filename);
-	check_required_args();
-	
-	// Handle required options
-	handle_u(url, &host_and_path, &hostname, &url_filename);
+	handle_u(url, host_and_path, hostname, url_filename);
 	handle_o(output_filename);
+}
 
-	// Handle optional arguments in specified order; simply to print output.
+
+/**
+ * Handles optional arguments in specified order; simply to print output.
+ * */
+void handle_optional_args(char *hostname, char *url_filename, char *output_filename)
+{
 	if (is_option_i) {
 		handle_i(hostname, url_filename, output_filename);
 	}
@@ -374,6 +383,21 @@ int main(int argc, char *argv[])
 	if (is_option_s) {
 		handle_s();
 	}
+}
 
+
+/**
+ * Main entry point of program.
+ * */
+int main(int argc, char *argv[])
+{
+	char *url, *output_filename;
+	char *host_and_path, *hostname, *url_filename;
+
+	printv("Starting command-line based web client...\n", NULL);
+	parse_args(argc, argv, &url, &output_filename);
+	check_required_args();
+	handle_required_args(url, &host_and_path, &hostname, &url_filename, output_filename);
+	handle_optional_args(hostname, url_filename, output_filename);
 	exit(0);
 }
