@@ -44,15 +44,16 @@ static char *url_filename;
 static char *output_filename;
 static char http_request[BUFLEN];
 static char http_response[BUFLEN];
-static char *http_content;
 static char http_headers[BUFLEN];
+static char *http_content;
 
 // Define constants
 static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
 static const char *PATH_DELIMITER = "/";
-static const char *ERROR_PREFIX = "ERROR: ";
+static const char ERROR_PREFIX[8] = "ERROR: ";
 static const char *CRLF = "\r\n";
+static const char *END_OF_HEADER = "\r\n\r\n";
 
 
 
@@ -76,8 +77,9 @@ void usage(char *progname)
  * */
 int errexit(char *format, char *arg)
 {
-    fprintf(stderr,format,arg);
-    fprintf(stderr,"\n");
+	fprintf(stderr, ERROR_PREFIX);
+    fprintf(stderr, format, arg);
+    fprintf(stderr, "\n");
     exit(ERROR);
 }
 
@@ -185,22 +187,20 @@ void send_http_request()
 	snprintf(http_request, BUFLEN, 
 		"GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
 	size_t request_size = strlen(http_request);
-	printf("\nHere is the request:\n\%s\n", http_request);
+	printf("Here is the request:\n----------\n\%s----------\n", http_request);
 
 	// Take note of value for msgSize
 	if (write(sd, http_request, request_size) != request_size) { //Send bytes
         errexit("Error writing to socket!", NULL);
     }
-    printf("MESSAGE SENT. Printing HTTP response...\n\n");
+    printf("HTTP request successfully made!\n");
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
     while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
     {
 		strcpy(http_response, recvline);
-        printf("%s", recvline);
-
-		// If looking at header line, save it for -c option
+        printf("Here is the HTTP response:\n----------\n%s----------\n", recvline);
 
 		// ? Zero out after printing current line
 		memset(recvline, 0, BUFLEN);	
@@ -215,6 +215,7 @@ void send_http_request()
 
 /**
  * Handles the -u option.
+ * Makes HTTP request using the provided URL
  * */
 void handle_u() 
 {
@@ -229,10 +230,10 @@ void handle_u()
 	strcpy(host_and_path_copy, host_and_path);
 	printf("Valid URL received: %s\n", url);
 
-	// 1. Get hostname
+	// * 1. Get hostname
 	hostname = strtok(host_and_path, PATH_DELIMITER);
 
-	// 2. Get url filename
+	// * 2. Get url filename
 	url_filename = host_and_path_copy + strlen(hostname);
 	if (strlen(url_filename) == 0) {
 		strcpy(url_filename, PATH_DELIMITER);
@@ -240,11 +241,40 @@ void handle_u()
 
 	printf("Sending HTTP request...\n");
 	send_http_request();
+
+	// * 3. Get content and headers from HTTP response
+	http_content = strstr(http_response, END_OF_HEADER);	
+	
+	// Remember: content will include end of header (need to strip new line)
+	http_content += strlen(END_OF_HEADER);
+	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+}
+
+
+/**
+ * Handles the -o option.
+ * Writes HTTP response content to the provided file.
+ * */
+void handle_o()
+{
+	// 1. Open file for writing
+	FILE *fp = fopen(output_filename, "w");
+	if (fp == NULL) {
+		errexit("Error opening file!", NULL);
+	}
+
+	// 2. Write HTTP response content to file
+	fprintf(fp, "%s", http_content);
+
+	// 3. Remember to close file
+	fclose(fp);
+	printf("Successfully saved HTTP content to %s!\n", output_filename);
 }
 
 
 /**
  * Handles the -i option.
+ * Prints information about the given command line parameters to standard output.
  * 
  * Example:
  * url: http://www.icir.org/home/index.html
@@ -261,7 +291,8 @@ void handle_i()
 
 
 /**
- * Handles the -c option. (local version)
+ * Handles the -c option.
+ * Prints the HTTP request sent by the web client to the web server to standard output.
  * Note that HTTP request must still be made regardless of this option.
  * */
 void handle_c() 
@@ -284,22 +315,18 @@ void handle_c()
 
 /**
  * Handles the -s option.
+ * Prints the HTTP response header received from the web server to standard output.
  * */
 void handle_s()
 {
-	// Find the end of the http response header
-	const char needle[20] = "\r\n\r\n";
-	char *line;
-
-	http_content = strstr(http_response, needle);
-	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+	char* line;
 
 	/* get the first token */
 	line = strtok(http_headers, CRLF);
 	
 	/* walk through other tokens */
 	while (line != NULL ) {
-		printf( "RSP: %s\n", line );
+		printf("RSP: %s\n", line );
 		line = strtok(NULL, CRLF);
 	}
 }
@@ -311,26 +338,23 @@ int main(int argc, char *argv[])
 	parse_args(argc, argv);
 	check_required_args();
 	
-	// * Handle -u: Make HTTP request using the provided URL
+	// Handle required options: -u and -o
 	printf("\n========== Handling -u option ==========\n");
 	handle_u();
+	printf("\n========== Handling -o option ==========\n");
+	handle_o();
 
-	// * Handle -o: Output content from HTTP response to the provided file
-	
-	// * Handle optional arguments in specified order; simply to print output.
-	// Handle -i: Print information about the given command line parameters to standard output
+	// Handle optional arguments in specified order; simply to print output.
 	if (is_option_i) {
 		printf("\n========== Handling -i option ==========\n");
 		handle_i();
 	}
 
-	// Handle -c: Print the HTTP request sent by the web client to the web server to standard output
 	if (is_option_c) {
 		printf("\n========== Handling -c option ==========\n");
 		handle_c();
 	}
 
-	// Handle -s: Print the HTTP response header received from the web server to standard output
 	if (is_option_s) {
 		printf("\n========== Handling -s option ==========\n");
 		handle_s();
