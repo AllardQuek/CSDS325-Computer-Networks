@@ -41,6 +41,7 @@ static bool is_option_o = false;
 static bool is_option_i = false;
 static bool is_option_c = false;
 static bool is_option_s = false;
+static bool is_option_v = false;
 
 // Define pointers for required information
 static char http_request[BUFLEN];
@@ -50,7 +51,7 @@ static char *http_content;
 
 // ? Cannot use #define ?
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
-static const char *OPT_STRING = ":u:o:csi";
+static const char *OPT_STRING = ":u:o:csiv";
 
 
 /**
@@ -64,17 +65,30 @@ void usage(char *progname)
 	fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
 	fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
 	fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
+	fprintf(stderr, "   -v               Print debug info\n");
 	exit(1);
+}
+
+
+/**
+ * Prints information if verbose flag is set to true.
+ * */
+void printv(char *msg_format, char *arg)
+{
+	if (is_option_v)
+	{
+		fprintf(stdout, msg_format, arg);
+	}
 }
 
 
 /**
  * Prints error message to stderr and exits the program.
  * */
-int errexit(char *format, char *arg)
+int errexit(char *msg_format, char *arg)
 {
 	fprintf(stderr, ERROR_PREFIX);
-    fprintf(stderr, format, arg);
+    fprintf(stderr, msg_format, arg);
     fprintf(stderr, "\n");
     exit(ERROR);
 }
@@ -108,6 +122,9 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 			case 's':
 				is_option_s = true;
 				break;
+			case 'v':
+				is_option_v = true;
+				break;
 			case ':':
 				printf("%s Option %c is missing a value \n", ERROR_PREFIX, optopt);
 				break;
@@ -126,8 +143,7 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 void check_required_args() 
 {
 	if (!is_option_u || !is_option_o) {
-		printf("%s Required options: -u -o\n", ERROR_PREFIX);
-		exit(1);
+		errexit("Required options: -u -o", NULL);
 	}
 }
 
@@ -157,7 +173,7 @@ void send_http_request(char *hostname, char *url_filename)
     memcpy((char *)&sin.sin_addr,hinfo->h_addr,hinfo->h_length);
 
     if ((protoinfo = getprotobyname(PROTOCOL)) == NULL)
-        errexit ("Cannot find protocol information for %s!", PROTOCOL);
+        errexit("Cannot find protocol information for %s!", PROTOCOL);
 
     // Allocate a socket (would be SOCK_DGRAM for UDP)
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
@@ -171,10 +187,9 @@ void send_http_request(char *hostname, char *url_filename)
     }
 
 	// * Send HTTP request to server
-	snprintf(http_request, BUFLEN, 
-		"GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
+	snprintf(http_request, BUFLEN, "GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
 	size_t request_size = strlen(http_request);
-	printf("Here is the request:\n----------\n\%s----------\n", http_request);
+	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
 	// Take note of value for msgSize
 	if (write(sd, http_request, request_size) != request_size) { //Send bytes
@@ -187,7 +202,7 @@ void send_http_request(char *hostname, char *url_filename)
     while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
     {
 		strcpy(http_response, recvline);
-        printf("Here is the HTTP response:\n----------\n%s----------\n", recvline);
+        printv("Here is the HTTP response:\n----------\n%s----------\n", recvline);
 
 		// ? Zero out after printing current line
 		memset(recvline, 0, BUFLEN);	
@@ -212,20 +227,20 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 		exit(1);
 	}
 
-	printf("Valid URL received: %s\n", url);
+	printv("Valid URL received: %s\n", url);
 	*host_and_path = url + strlen(URL_PREFIX);
-	printf("Host and path: %s\n", *host_and_path);
+	printv("Host and path: %s\n", *host_and_path);
 
 	// * 1. Get hostname
 	// We should avoid moving the original pointers else the values would change
 	// This step seems to change `url` and `host_and_path` if *host_and_path is used instead
 	char *host_and_path_copy = strdup(*host_and_path);
 	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
-	printf("Hostname: %s\n", *hostname);
+	printv("Hostname: %s\n", *hostname);
 
 	// * 2. Get url filename
 	*url_filename = *host_and_path + strlen(*hostname);
-	printf("URL filename: %s\n", *url_filename);
+	printv("URL filename: %s\n", *url_filename);
 
 	if (strlen(*url_filename) == 0) {
 		*url_filename = PATH_DELIMITER;
@@ -267,7 +282,7 @@ void handle_o(char *output_filename)
 
 	// 3. Remember to close file
 	fclose(fp);
-	printf("Successfully saved HTTP content to %s!\n", output_filename);
+	printv("Successfully saved HTTP content to %s!\n", output_filename);
 }
 
 
@@ -306,7 +321,7 @@ void handle_c()
 	
 	/* walk through other tokens */
 	while (line != NULL ) {
-		printf( "REQ: %s\n", line );
+		printf("REQ: %s\n", line );
 		line = strtok(NULL, CRLF);
 	}
 }
@@ -339,29 +354,29 @@ int main(int argc, char *argv[])
 	char *url, *output_filename;
 	char *host_and_path, *hostname, *url_filename;
 
-	printf("Starting command-line based web client...\n");
+	printv("Starting command-line based web client...\n", NULL);
 	parse_args(argc, argv, &url, &output_filename);
 	check_required_args();
 	
 	// Handle required options: -u and -o
-	printf("\n========== Handling -u option ==========\n");
+	printv("\n========== Handling -u option ==========\n", NULL);
 	handle_u(url, &host_and_path, &hostname, &url_filename);
-	printf("\n========== Handling -o option ==========\n");
+	printv("\n========== Handling -o option ==========\n", NULL);
 	handle_o(output_filename);
 
 	// Handle optional arguments in specified order; simply to print output.
 	if (is_option_i) {
-		printf("\n========== Handling -i option ==========\n");
+		printv("\n========== Handling -i option ==========\n", NULL);
 		handle_i(hostname, url_filename, output_filename);
 	}
 
 	if (is_option_c) {
-		printf("\n========== Handling -c option ==========\n");
+		printv("\n========== Handling -c option ==========\n", NULL);
 		handle_c();
 	}
 
 	if (is_option_s) {
-		printf("\n========== Handling -s option ==========\n");
+		printv("\n========== Handling -s option ==========\n", NULL);
 		handle_s();
 	}
 
