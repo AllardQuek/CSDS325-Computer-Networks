@@ -43,13 +43,17 @@ static char *hostname;
 static char *url_filename;
 static char *output_filename;
 static char http_request[BUFLEN];
-// static char *http_response;
+static char http_response[BUFLEN];
+static char *http_content;
+static char http_headers[BUFLEN];
 
 // Define constants
 static const char *OPT_STRING = ":u:o:csi";
 static const char *URL_PREFIX = "http://";
 static const char *PATH_DELIMITER = "/";
 static const char *ERROR_PREFIX = "ERROR: ";
+static const char *CRLF = "\r\n";
+
 
 
 /**
@@ -191,9 +195,12 @@ void send_http_request()
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
-    while ((bytes_read = read(sd, recvline, BUFLEN-1)) > 0) 
+    while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
     {
+		strcpy(http_response, recvline);
         printf("%s", recvline);
+
+		// If looking at header line, save it for -c option
 
 		// ? Zero out after printing current line
 		memset(recvline, 0, BUFLEN);	
@@ -211,7 +218,7 @@ void send_http_request()
  * */
 void handle_u() 
 {
-	// We should check for valid URL as long as it was passed in
+	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
 		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
 		exit(1);
@@ -260,18 +267,17 @@ void handle_i()
 void handle_c() 
 {
 	char *line;
-	const char *new_line_char = "\r\n";
 
 	// Terminate request string before new blank line
-	http_request[strlen(http_request) - strlen(new_line_char)] = 0;
+	http_request[strlen(http_request) - strlen(CRLF)] = 0;
 	
 	/* get the first token */
-	line = strtok(http_request, new_line_char);
+	line = strtok(http_request, CRLF);
 	
 	/* walk through other tokens */
 	while (line != NULL ) {
 		printf( "REQ: %s\n", line );
-		line = strtok(NULL, new_line_char);
+		line = strtok(NULL, CRLF);
 	}
 }
 
@@ -281,9 +287,21 @@ void handle_c()
  * */
 void handle_s()
 {
-	printf("RSP: hostname = %s\n", hostname);
-	printf("RSP: url_filename = %s\n", url_filename);
-	printf("RSP: output_filename = %s\n", output_filename);
+	// Find the end of the http response header
+	const char needle[20] = "\r\n\r\n";
+	char *line;
+
+	http_content = strstr(http_response, needle);
+	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+
+	/* get the first token */
+	line = strtok(http_headers, CRLF);
+	
+	/* walk through other tokens */
+	while (line != NULL ) {
+		printf( "RSP: %s\n", line );
+		line = strtok(NULL, CRLF);
+	}
 }
 
 
