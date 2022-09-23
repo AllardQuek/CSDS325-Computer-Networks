@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include <stdio.h>
 
-int main (int argc, char *argv [])
+int main(int argc, char *argv [])
 {
 	// * Upper to lower case
 	char str[] = "HELLO world";
@@ -75,6 +75,13 @@ int main (int argc, char *argv [])
 
     url pointer should point to address of local_url
     *url = local_url;
+
+
+    // * Print debug
+    printf("BEFORE URL is: %s\n", url);
+	printf("BEFORE HOST PATH is: %s\n", *host_and_path);
+	printf("NOW URL is: %s\n", url);
+	printf("NOW HOST PATH is: %s\n", *host_and_path);
 }
 
 

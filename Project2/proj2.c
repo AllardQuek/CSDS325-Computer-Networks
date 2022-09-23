@@ -42,8 +42,6 @@ static bool is_option_c = false;
 static bool is_option_s = false;
 
 // Define pointers for required information
-static char hostname[DEFAULT_STR_LEN];
-static char url_filename[DEFAULT_STR_LEN];
 static char http_request[BUFLEN];
 static char http_response[BUFLEN];
 static char http_headers[BUFLEN];
@@ -138,7 +136,7 @@ void check_required_args()
 /**
  * Sends a HTTP GET request to the server.
  * */
-void send_http_request()
+void send_http_request(char *hostname, char *url_filename)
 {
     struct sockaddr_in sin;
     struct hostent *hinfo;
@@ -148,14 +146,11 @@ void send_http_request()
 	int bytes_read;
 
 	// Lookup the hostname
-	printf("Looking up %s...\n", hostname);
     hinfo = gethostbyname(hostname);
     if (hinfo == NULL)
-        errexit ("Cannot find name: %s!", hostname);
+        errexit("Cannot find name: %s", hostname);
 
     // Set endpoint information 
-	printf("Setting endpoint info...\n");
-
 	// Zero out the socket address
     memset((char *)&sin, 0x0, sizeof(sin));	
     sin.sin_family = AF_INET;
@@ -166,13 +161,11 @@ void send_http_request()
         errexit ("Cannot find protocol information for %s!", PROTOCOL);
 
     // Allocate a socket (would be SOCK_DGRAM for UDP)
-	printf("Allocating a socket...\n");
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
     if (sd < 0)
         errexit("Cannot create socket!\n",NULL);
 
     // Connect the socket
-	printf("Connecting the socket...\n");
     if (connect (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
         errexit ("Cannot connect!", NULL);
 
@@ -186,7 +179,6 @@ void send_http_request()
 	if (write(sd, http_request, request_size) != request_size) { //Send bytes
         errexit("Error writing to socket!", NULL);
     }
-    printf("HTTP request successfully made!\n");
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
@@ -210,7 +202,7 @@ void send_http_request()
  * Handles the -u option.
  * Makes HTTP request using the provided URL
  * */
-void handle_u(char *url) 
+void handle_u(char *url, char **host_and_path, char **hostname, char **url_filename) 
 {
 	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
@@ -219,22 +211,29 @@ void handle_u(char *url)
 	}
 
 	printf("Valid URL received: %s\n", url);
-	char host_and_path[DEFAULT_STR_LEN];
-	strcpy(host_and_path, url + strlen(URL_PREFIX));
+	*host_and_path = url + strlen(URL_PREFIX);
+	printf("Host and path: %s\n", *host_and_path);
 
 	// * 1. Get hostname
 	char *token;
-	token = strtok(host_and_path, PATH_DELIMITER);
-	strcpy(hostname, token);
+	char *host_and_path_copy = strdup(*host_and_path);
+
+	// ? This step seems to change `url` and `host_and_path` if copy is not used
+	// token = strtok(*host_and_path, PATH_DELIMITER);
+	token = strtok(host_and_path_copy, PATH_DELIMITER);
+	*hostname = token;
+	printf("Hostname: %s\n", *hostname);
 
 	// * 2. Get url filename
-	strcpy(url_filename, host_and_path + strlen(hostname));
-	if (strlen(url_filename) == 0) {
-		strcpy(url_filename, PATH_DELIMITER);
+	*url_filename = *host_and_path + strlen(*hostname);
+	
+	printf("URL filename: %s\n", *url_filename);
+	if (strlen(*url_filename) == 0) {
+		strcpy(*url_filename, PATH_DELIMITER);
 	}
 
-	printf("Sending HTTP request...\n");
-	send_http_request();
+	// Pass the pointer to the required values, not the double pointers
+	send_http_request(*hostname, *url_filename);
 
 	// * 3. Get content and headers from HTTP response
 	http_content = strstr(http_response, END_OF_HEADER);	
@@ -276,7 +275,7 @@ void handle_o(char *output_filename)
  * INF: web_filename = [url_filename]
  * INF: output_filename = [local_filename]
  * */
-void handle_i(char *output_filename) 
+void handle_i(char *hostname, char *url_filename, char *output_filename) 
 {
 	printf("INF: hostname = %s\n", hostname);
 	printf("INF: url_filename = %s\n", url_filename);
@@ -331,8 +330,10 @@ void handle_s()
  * */
 int main(int argc, char *argv[])
 {
-	char *url;
-	char *output_filename;
+	char *url, *output_filename;
+	char *host_and_path, *hostname, *url_filename;
+	// http_response, http_content, http_headers
+
 	printf("Starting command-line based web client...\n");
 	parse_args(argc, argv, &url, &output_filename);
 	printf("url = %s\n", url);
@@ -341,14 +342,14 @@ int main(int argc, char *argv[])
 	
 	// Handle required options: -u and -o
 	printf("\n========== Handling -u option ==========\n");
-	handle_u(url);
+	handle_u(url, &host_and_path, &hostname, &url_filename);
 	printf("\n========== Handling -o option ==========\n");
 	handle_o(output_filename);
 
 	// Handle optional arguments in specified order; simply to print output.
 	if (is_option_i) {
 		printf("\n========== Handling -i option ==========\n");
-		handle_i(output_filename);
+		handle_i(hostname, url_filename, output_filename);
 	}
 
 	if (is_option_c) {
