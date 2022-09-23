@@ -221,6 +221,7 @@ void send_http_request(char *hostname, char *url_filename)
  * */
 void handle_u(char *url, char **host_and_path, char **hostname, char **url_filename) 
 {
+	printv("\n========== Handling -u option ==========\n", NULL);
 	// Check for valid URL as long as it was passed in
 	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) { 
 		printf("%s Url must start with %s\n", ERROR_PREFIX, URL_PREFIX);
@@ -264,6 +265,7 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
  * */
 void handle_o(char *output_filename)
 {
+	printv("\n========== Handling -o option ==========\n", NULL);
     // Check if status code was 200 OK
     if (strstr(http_headers, SUCCESS_CODE) == NULL)
     {
@@ -298,11 +300,26 @@ void handle_o(char *output_filename)
  * */
 void handle_i(char *hostname, char *url_filename, char *output_filename) 
 {
+	printv("\n========== Handling -i option ==========\n", NULL);
 	printf("INF: hostname = %s\n", hostname);
 	printf("INF: url_filename = %s\n", url_filename);
 	printf("INF: output_filename = %s\n", output_filename);
 }
 
+
+void print_lines(char *lines, char *prefix)
+{
+	char *line;
+
+	/* get the first token */
+	line = strtok(lines, CRLF);
+	
+	/* walk through other tokens */
+	while (line != NULL ) {
+		printf("%s: %s\n", prefix, line);
+		line = strtok(NULL, CRLF);
+	}
+}
 
 /**
  * Handles the -c option.
@@ -311,19 +328,10 @@ void handle_i(char *hostname, char *url_filename, char *output_filename)
  * */
 void handle_c() 
 {
-	char *line;
-
+	printv("\n========== Handling -c option ==========\n", NULL);
 	// Terminate request string before new blank line
 	http_request[strlen(http_request) - strlen(CRLF)] = 0;
-	
-	/* get the first token */
-	line = strtok(http_request, CRLF);
-	
-	/* walk through other tokens */
-	while (line != NULL ) {
-		printf("REQ: %s\n", line );
-		line = strtok(NULL, CRLF);
-	}
+	print_lines(http_request, "REQ");
 }
 
 
@@ -333,16 +341,8 @@ void handle_c()
  * */
 void handle_s()
 {
-	char* line;
-
-	/* get the first token */
-	line = strtok(http_headers, CRLF);
-	
-	/* walk through other tokens */
-	while (line != NULL ) {
-		printf("RSP: %s\n", line );
-		line = strtok(NULL, CRLF);
-	}
+	printv("\n========== Handling -s option ==========\n", NULL);
+	print_lines(http_headers, "RSP");
 }
 
 
@@ -358,25 +358,20 @@ int main(int argc, char *argv[])
 	parse_args(argc, argv, &url, &output_filename);
 	check_required_args();
 	
-	// Handle required options: -u and -o
-	printv("\n========== Handling -u option ==========\n", NULL);
+	// Handle required options
 	handle_u(url, &host_and_path, &hostname, &url_filename);
-	printv("\n========== Handling -o option ==========\n", NULL);
 	handle_o(output_filename);
 
 	// Handle optional arguments in specified order; simply to print output.
 	if (is_option_i) {
-		printv("\n========== Handling -i option ==========\n", NULL);
 		handle_i(hostname, url_filename, output_filename);
 	}
 
 	if (is_option_c) {
-		printv("\n========== Handling -c option ==========\n", NULL);
 		handle_c();
 	}
 
 	if (is_option_s) {
-		printv("\n========== Handling -s option ==========\n", NULL);
 		handle_s();
 	}
 
