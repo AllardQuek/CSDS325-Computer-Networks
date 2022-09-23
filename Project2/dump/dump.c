@@ -60,3 +60,46 @@ int main (int argc, char *argv [])
     free(http_response);
 }
 
+
+
+char* readMsg(int sockfd, size_t *msgSize)
+{
+    *msgSize = 0;
+
+    unsigned int length = 0;
+    int bytes_read = read(sockfd, &length, sizeof(length)); //Receive number of bytes
+    if (bytes_read <= 0) {
+        perror("Error in receiving message from server\n");
+        return NULL;
+    }
+    length = ntohl(length);
+
+    char *buffer = malloc(length+1);
+    if (!buffer) {
+        perror("Error in allocating memory to receive message from server\n");
+        return NULL;
+    }
+
+    char *pbuf = buffer;
+    unsigned int buflen = length;
+    while (buflen > 0) {
+        bytes_read = read(sockfd, pbuf, buflen); // Receive bytes
+        if (bytes_read <= 0) {
+            perror("Error in receiving message from server\n");
+            free(buffer);
+            return NULL;
+        }
+        pbuf += bytes_read;
+        buflen -= bytes_read;
+    }
+
+    *msgSize = length;
+    return buffer;
+}
+
+
+void handle_c() 
+{
+	char *final_output = "REQ: GET %s HTTP/1.0 \r\nREQ: Host: %s\r\nREQ: User-Agent: = %s\r\n";
+	printf(final_output, url_filename, hostname, user_agent);
+}

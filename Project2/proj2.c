@@ -42,7 +42,6 @@ static char *url;
 static char *hostname;
 static char *url_filename;
 static char *output_filename;
-static char *user_agent = "TEMP_USER_AGENT";
 static char http_request[BUFLEN];
 // static char *http_response;
 
@@ -137,46 +136,10 @@ void check_required_args()
 }
 
 
-char* readMsg(int sockfd, size_t *msgSize)
-{
-    *msgSize = 0;
-
-    unsigned int length = 0;
-    int bytes_read = read(sockfd, &length, sizeof(length)); //Receive number of bytes
-    if (bytes_read <= 0) {
-        perror("Error in receiving message from server\n");
-        return NULL;
-    }
-    length = ntohl(length);
-
-    char *buffer = malloc(length+1);
-    if (!buffer) {
-        perror("Error in allocating memory to receive message from server\n");
-        return NULL;
-    }
-
-    char *pbuf = buffer;
-    unsigned int buflen = length;
-    while (buflen > 0) {
-        bytes_read = read(sockfd, pbuf, buflen); // Receive bytes
-        if (bytes_read <= 0) {
-            perror("Error in receiving message from server\n");
-            free(buffer);
-            return NULL;
-        }
-        pbuf += bytes_read;
-        buflen -= bytes_read;
-    }
-
-    *msgSize = length;
-    return buffer;
-}
-
-
 /**
  * Sends a HTTP GET request to the server.
  * */
-int send_http_request()
+void send_http_request()
 {
     struct sockaddr_in sin;
     struct hostent *hinfo;
@@ -184,9 +147,6 @@ int send_http_request()
     int sd;
 	char recvline[BUFLEN];
 	int bytes_read;
-    // char buffer [BUFLEN];
-	// int ret;
-	// char *ptr;
 
 	// Lookup the hostname
 	printf("Looking up %s...\n", hostname);
@@ -230,6 +190,7 @@ int send_http_request()
     printf("MESSAGE SENT. Printing HTTP response...\n\n");
 
 	// * Read HTTP response from server
+	// ? Why cannot place `read` outside of while loop?
     while ((bytes_read = read(sd, recvline, BUFLEN-1)) > 0) 
     {
         printf("%s", recvline);
@@ -242,7 +203,6 @@ int send_http_request()
 		errexit("Error reading from socket!", NULL);
 
     close (sd);
-    exit (0);
 }
 
 
@@ -299,8 +259,31 @@ void handle_i()
  * */
 void handle_c() 
 {
-	char *final_output = "REQ: GET %s HTTP/1.0 \r\nREQ: Host: %s\r\nREQ: User-Agent: = %s\r\n";
-	printf(final_output, url_filename, hostname, user_agent);
+	char *line;
+	const char *new_line_char = "\r\n";
+
+	// Terminate request string before new blank line
+	http_request[strlen(http_request) - strlen(new_line_char)] = 0;
+	
+	/* get the first token */
+	line = strtok(http_request, new_line_char);
+	
+	/* walk through other tokens */
+	while (line != NULL ) {
+		printf( "REQ: %s\n", line );
+		line = strtok(NULL, new_line_char);
+	}
+}
+
+
+/**
+ * Handles the -s option.
+ * */
+void handle_s()
+{
+	printf("RSP: hostname = %s\n", hostname);
+	printf("RSP: url_filename = %s\n", url_filename);
+	printf("RSP: output_filename = %s\n", output_filename);
 }
 
 
@@ -330,6 +313,10 @@ int main(int argc, char *argv[])
 	}
 
 	// Handle -s: Print the HTTP response header received from the web server to standard output
+	if (is_option_s) {
+		printf("\n========== Handling -s option ==========\n");
+		handle_s();
+	}
 
 	exit(0);
 }
