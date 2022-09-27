@@ -221,21 +221,18 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 
 	if (output_file == NULL)
 	{
-		printf("%sFailed to open output file!\n", ERROR_PREFIX);
-		// TODO: Exit
 		fclose(output_file);
-		return;
+		errexit("Failed to open output file!", NULL);
 	} 
-	// ? bytes_read correct?
+
 	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
 		// If we wrote fewer bytes than we read, there was an error
 		if (fwrite(http_response, byte_size, bytes_read, output_file) != bytes_read) 
 			printf("%sFailed to write to file!", ERROR_PREFIX);
-			// ? Should we just return here? How to make sure we close the file pointers?
 	}
 
 	if (ferror(fd))
-		printf("%sCould not read from socket!", ERROR_PREFIX); 
+		errexit("Could not read from socket!", NULL);
 
 	// Remember to close file pointer
 	fclose(output_file);
@@ -249,8 +246,7 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 void read_header_lines(char *http_response, FILE *fd) 
 {
 	for (;;) {
-		// ? Use BUFLEN, not sizeof(http_response) but should be length of str used?
-		// https://www.tutorialspoint.com/c_standard_library/c_function_fgets.htm
+		// BUFLEN just needs to be big enough for current line
 		if (fgets(http_response, BUFLEN, fd) == NULL) {
 			errexit("Could not get HTTP response!", NULL);
 		}
@@ -378,7 +374,7 @@ void print_lines(char *lines, char *prefix)
 	
 	/* walk through other tokens */
 	while (line != NULL ) {
-		printf("%s: %s\r\n", prefix, line);
+		printf("%s: %s%s", prefix, line, CRLF);
 		line = strtok(NULL, CRLF);
 	}
 }
@@ -417,7 +413,6 @@ void handle_required_args(char *url, char *output_filename, char **host_and_path
 	printv("\n========== Handling required options ==========\n", NULL);
 	if (is_valid_url(url) == 0) 
 		errexit("Url must start with %s", URL_PREFIX);
-	
 	printv("Valid URL received: %s\n", url);
 
 	// * Split url into hostname and url_filename
