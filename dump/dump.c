@@ -212,3 +212,29 @@ void handle_o(char *output_filename)
 
 	write_to_file(output_filename, http_content);
 }
+
+
+/**
+ * Handles the -u option.
+ * Makes HTTP request using the provided URL
+ * */
+void handle_u(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename) 
+{
+	printv("\n========== Handling -u option ==========\n", NULL);
+	if (is_valid_url(url) == 0) 
+		errexit("Url must start with %s", URL_PREFIX);
+	
+	printv("Valid URL received: %s\n", url);
+
+	// * Split url into hostname and url_filename
+	set_host_and_path(url, host_and_path);
+	set_hostname(*host_and_path, hostname);
+	set_url_filename(url_filename, *host_and_path, *hostname);
+
+	// * Make HTTP request
+	// Pass the pointer to the required values, not the double pointers
+	int sd = connect_to_socket(*hostname);
+	send_http_request(sd, *hostname, *url_filename);
+	read_http_response(sd, output_filename);
+	close(sd);
+}

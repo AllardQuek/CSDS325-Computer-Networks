@@ -126,11 +126,11 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 				break;
 			case ':':
 				printf("%sOption %c is missing a value \n", ERROR_PREFIX, optopt);
-				break;
+				usage(argv[0]);
 			case '?':
+				// ? Should we still print output if at least one option is unknown?
 				printf("%sUnknown option %c\n", ERROR_PREFIX, optopt);
 				usage(argv[0]);
-				break;
 		}
 	}
 }
@@ -340,32 +340,6 @@ void set_url_filename(char **url_filename, char *host_and_path, char *hostname)
 
 
 /**
- * Handles the -u option.
- * Makes HTTP request using the provided URL
- * */
-void handle_u(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename) 
-{
-	printv("\n========== Handling -u option ==========\n", NULL);
-	if (is_valid_url(url) == 0) 
-		errexit("Url must start with %s", URL_PREFIX);
-	
-	printv("Valid URL received: %s\n", url);
-
-	// * Split url into hostname and url_filename
-	set_host_and_path(url, host_and_path);
-	set_hostname(*host_and_path, hostname);
-	set_url_filename(url_filename, *host_and_path, *hostname);
-
-	// * Make HTTP request
-	// Pass the pointer to the required values, not the double pointers
-	int sd = connect_to_socket(*hostname);
-	send_http_request(sd, *hostname, *url_filename);
-	read_http_response(sd, output_filename);
-	close(sd);
-}
-
-
-/**
  * Handles the -i option.
  * Prints information about the given command line parameters to standard output.
  * 
@@ -432,8 +406,7 @@ void handle_s()
  * */
 void handle_required_args(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename)
 {
-	// handle_u(url, output_filename, host_and_path, hostname, url_filename);
-	printv("\n========== Handling -u option ==========\n", NULL);
+	printv("\n========== Handling required options ==========\n", NULL);
 	if (is_valid_url(url) == 0) 
 		errexit("Url must start with %s", URL_PREFIX);
 	
