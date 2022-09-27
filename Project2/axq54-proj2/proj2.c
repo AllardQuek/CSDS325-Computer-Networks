@@ -362,10 +362,10 @@ void print_lines(char *lines, char *prefix)
 {
 	char *line;
 
-	// Get the first token
+	/* get the first token */
 	line = strtok(lines, CRLF);
 	
-	// Find other tokens
+	/* walk through other tokens */
 	while (line != NULL ) {
 		printf("%s: %s%s", prefix, line, CRLF);
 		line = strtok(NULL, CRLF);
