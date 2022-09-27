@@ -20,7 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 
-// Added networking libraries
+// Add networking libraries
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -222,6 +222,7 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 	if (output_file == NULL)
 	{
 		printf("%sFailed to open output file!\n", ERROR_PREFIX);
+		// TODO: Exit
 		fclose(output_file);
 		return;
 	} 
