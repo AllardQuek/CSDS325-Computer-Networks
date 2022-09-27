@@ -49,7 +49,6 @@ static bool is_option_v = false;
 static char http_request[BUFLEN];
 static char http_headers[BUFLEN];
 
-// ? Cannot use #define ?
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":u:o:csiv";
 
@@ -127,7 +126,6 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 				printf("%sOption %c is missing a value \n", ERROR_PREFIX, optopt);
 				usage(argv[0]);
 			case '?':
-				// ? Should we still print output if at least one option is unknown?
 				printf("%sUnknown option %c\n", ERROR_PREFIX, optopt);
 				usage(argv[0]);
 		}
@@ -163,7 +161,6 @@ int connect_to_socket(char *hostname)
         errexit("Cannot find name: %s", hostname);
 
     // Set endpoint information 
-	// ? Zero out the socket address
     memset((char *)&sin, 0x0, sizeof(sin));	
     sin.sin_family = AF_INET;
     sin.sin_port = htons(HTTP_PORT);
@@ -199,11 +196,9 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 			url_filename, hostname);
 	
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
+	size_t request_size = strlen(http_request);
 
-	// ? Why need third parameter if it is just length of buffer?
-	// size_t request_size = strlen(http_request);
-	// if (write(sd, http_request, request_size) != request_size) { 
-	if (write(sd, http_request, BUFLEN) != BUFLEN) {
+	if (write(sd, http_request, request_size) != request_size) { 
         errexit("Error writing to socket!", NULL);
     }
 }
@@ -317,12 +312,10 @@ void set_host_and_path(char *url, char **host_and_path)
 
 /**
  * Sets the variable for storing the hostname.
+ * strtok modifies the contents of the string, so create a copy instead of just using host_and_path.
  * */
 void set_hostname(char *host_and_path, char **hostname)
 {
-	// We should avoid moving the original pointers else the values would change
-	// ? This step seems to change `url` and `host_and_path` if *host_and_path is used instead
-	// *hostname = strtok(host_and_path, PATH_DELIMITER);
 	char *host_and_path_copy = strdup(host_and_path);
 	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
 	printv("Hostname: %s\n", *hostname);
