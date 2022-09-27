@@ -45,7 +45,6 @@ static bool is_option_v = false;
 // Define pointers for required information
 static char http_request[BUFLEN];
 static char http_headers[BUFLEN];
-static char *http_content;
 
 // ? Cannot use #define ?
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
@@ -224,7 +223,7 @@ void read_http_response(int sd, char *output_filename)
 
 		// Build header string with current header line
 		strcat(http_headers, http_response);
-		if (strcmp("\r\n", http_response) == 0) {
+		if (strcmp(CRLF, http_response) == 0) {
 			// this marks the end of header lines: get out of the for loop.
 			printv("Reached end of header!\n", NULL);
 			break;
@@ -233,7 +232,7 @@ void read_http_response(int sd, char *output_filename)
 	printv("Here is the header:\n----------\n%s----------\n", http_headers);
 
 	// * Read file contents
-	// We switch to fread()/fwrite() so that we can download both binary and HTML files
+	// Use fread() and fwrite() to allow downloading both binary and HTML files
 	FILE *outputFile = fopen(output_filename, "wb");
 	if (outputFile == NULL)
 	printf("can't open output file");
@@ -253,7 +252,7 @@ void read_http_response(int sd, char *output_filename)
 	if (ferror(fd))
 		printf("fread failed");
 
-	// All done.  Clean up.
+	// Remember to close file pointer
 	fclose(outputFile);
 
 	// closing fd closes the underlying socket as well.
@@ -284,7 +283,8 @@ void set_host_and_path(char *url, char **host_and_path)
 void set_hostname(char *host_and_path, char **hostname)
 {
 	// We should avoid moving the original pointers else the values would change
-	// This step seems to change `url` and `host_and_path` if *host_and_path is used instead
+	// ? This step seems to change `url` and `host_and_path` if *host_and_path is used instead
+	// *hostname = strtok(host_and_path, PATH_DELIMITER);
 	char *host_and_path_copy = strdup(host_and_path);
 	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
 	printv("Hostname: %s\n", *hostname);
@@ -325,46 +325,6 @@ void handle_u(char *url, char *output_filename, char **host_and_path, char **hos
 	send_http_request(sd, *hostname, *url_filename);
 	read_http_response(sd, output_filename);
 	close(sd);
-	
-	// * Get content and headers from HTTP response
-	// Remember: content will include end of header (need to strip end of header)
-	// http_content = strstr(http_response, END_OF_HEADER) + strlen(END_OF_HEADER);	
-	// strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
-	// free(http_response);
-}
-
-
-/**
- * Writes content to filename.
- * */
-void write_to_file(char *filename, char *content) 
-{
-	FILE *fp = fopen(filename, "w");
-	if (fp == NULL) {
-		errexit("Error opening file!", NULL);
-	}
-
-	fprintf(fp, "%s", content);		// Write content to file
-	fclose(fp);						// Remember to close file
-	printv("Successfully saved HTTP content to %s!\n", filename);
-}
-
-
-/**
- * Handles the -o option.
- * Writes HTTP response content to the provided file, if response status was 200 OK.
- * */
-void handle_o(char *output_filename)
-{
-	printv("\n========== Handling -o option ==========\n", NULL);
-    // Check if status code was 200 OK
-    if (strstr(http_headers, SUCCESS_CODE) == NULL)
-    {
-        printf("Response from server was not OK. Output will not be written to file.\n");
-        return;
-    }
-
-	write_to_file(output_filename, http_content);
 }
 
 
@@ -432,7 +392,6 @@ void handle_s()
 void handle_required_args(char *url, char **host_and_path, char **hostname, char **url_filename, char *output_filename)
 {
 	handle_u(url, output_filename, host_and_path, hostname, url_filename);
-	// handle_o(output_filename);
 }
 
 

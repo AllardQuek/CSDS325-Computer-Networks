@@ -125,6 +125,13 @@ int main(int argc, char *argv [])
 
 	// If we're here, it means we have a successful HTTP
 	// response (i.e., response code 200).
+
+
+	// * Get content and headers from HTTP response
+	// Remember: content will include end of header (need to strip end of header)
+	http_content = strstr(http_response, END_OF_HEADER) + strlen(END_OF_HEADER);	
+	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+	free(http_response);
 }
 
 
@@ -172,3 +179,36 @@ void handle_c()
 }
 
 
+
+/**
+ * Writes content to filename.
+ * */
+void write_to_file(char *filename, char *content) 
+{
+	FILE *fp = fopen(filename, "w");
+	if (fp == NULL) {
+		errexit("Error opening file!", NULL);
+	}
+
+	fprintf(fp, "%s", content);		// Write content to file
+	fclose(fp);						// Remember to close file
+	printv("Successfully saved HTTP content to %s!\n", filename);
+}
+
+
+/**
+ * Handles the -o option.
+ * Writes HTTP response content to the provided file, if response status was 200 OK.
+ * */
+void handle_o(char *output_filename)
+{
+	printv("\n========== Handling -o option ==========\n", NULL);
+    // Check if status code was 200 OK
+    if (strstr(http_headers, SUCCESS_CODE) == NULL)
+    {
+        printf("Response from server was not OK. Output will not be written to file.\n");
+        return;
+    }
+
+	write_to_file(output_filename, http_content);
+}
