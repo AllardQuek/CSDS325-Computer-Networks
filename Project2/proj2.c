@@ -185,40 +185,114 @@ int connect_to_socket(char *hostname)
  * */
 void send_http_request(int sd, char *hostname, char *url_filename)
 {
-	snprintf(http_request, BUFLEN, "GET %s HTTP/1.0\r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
-	size_t request_size = strlen(http_request);
+	// Note that C concatenates adjacent string literals
+	snprintf(http_request, BUFLEN, 
+			"GET %s HTTP/1.0\r\n"
+			"Host: %s\r\n"
+			"User-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", 
+			url_filename, hostname);
+	
+	// size_t request_size = strlen(http_request);
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
 	// Take note of value for msgSize
-	if (write(sd, http_request, request_size) != request_size) { //Send bytes
+	// if (write(sd, http_request, request_size) != request_size) { //Send bytes
+	if (write(sd, http_request, BUFLEN) != BUFLEN) { //Send bytes
         errexit("Error writing to socket!", NULL);
     }
 }
 
 
-char *read_http_response(int sd)
+void read_http_response(int sd, char *output_filename)
 {
-	char recvline[BUFLEN];
+	// char recvline[BUFLEN];
 	char *http_response = malloc(BUFLEN);
 
-	int bytes_read;
+	// int bytes_read;
+
+
+	// TODO: Write a part of response to file each time (-o option)
+	// * ADDED
+	// wrap the socket with a FILE* so that we can read the socket using fgets()
+	FILE *fd;
+	if ((fd = fdopen(sd, "r")) == NULL) {
+		errexit("fdopen failed", NULL);
+	}
+
+	// read the 1st line
+	// if (fgets(http_response, sizeof(http_response) + 1, fd) == NULL) {
+	// 	if (ferror(fd))
+	// 		errexit("IO error", NULL);
+	// 	else {
+	// 		errexit("server terminated connection without response", NULL);
+	// 	}
+	// } 
+
+	// Check if we get "HTTP/1.0" or "HTTP/1.1"
+	// printf("HERE http_response: %s\n", http_response);
+	// if (strncmp("HTTP/1.0", http_response, 9) != 0 && strncmp("HTTP/1.1", http_response, 9) != 0) {
+	// 	errexit("unknown protocol response: %s\n", http_response);
+	// }
+
+	// DO NOT PROCEED TO WRITE if we don't get response code 200
+	// if (strncmp("200", http_response + 9 + 1, 3) != 0) {
+	// 	printf("PRINTING: RESPONSE CODE IS NOT 200, NO WRITING\n");
+	// 	return;
+	// }
+
+	// If we're here, it means we have a successful HTTP
+	// response (i.e., response code 200).
+
+	// Now, skip the header lines.
+	for (;;) {
+		if (fgets(http_response, sizeof(http_response), fd) == NULL) {
+			errexit("Could not get HTTP response!", NULL);
+		}
+		printf("HERE is a header line: %s\n", http_response);
+		if (strcmp("\r\n", http_response) == 0) {
+			// this marks the end of header lines: get out of the for loop.
+			printf("END OF HEADER!");
+			break;
+		}
+	}
+
+	// Now it's time to read the file.
+	// We switch to fread()/fwrite() so that we can download a binary
+	// file as well as an HTML file.
+	FILE *outputFile = fopen(output_filename, "wb");
+	if (outputFile == NULL)
+	printf("can't open output file");
+
+	size_t n;
+	while ((n = fread(http_response, 1, sizeof(http_response), fd)) > 0) {
+	if (fwrite(http_response, 1, n, outputFile) != n) 
+		printf("fwrite failed");
+	}
+	// fread() returns 0 on EOF or on error
+	// so we need to check if there was an error.
+	if (ferror(fd))
+		printf("fread failed");
+
+	// All done.  Clean up.
+	fclose(outputFile);
+
+	// closing fd closes the underlying socket as well.
+	fclose(fd);
 
 	// * Read HTTP response from server
 	// ? Why cannot place `read` outside of while loop?
 	// ? What if the while loop is executed multiple times?
-    while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
-    {
-		strcpy(http_response, recvline);
-        printv("Here is the HTTP response:\n----------\n%s----------\n", recvline);
+    // while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
+    // {
+	// 	strcpy(http_response, recvline);
+    //     printv("Here is the HTTP response:\n----------\n%s----------\n", recvline);
 
-		// ? Zero out after printing current line
-		memset(recvline, 0, BUFLEN);	
-    }   
+	// 	// ? Zero out after printing current line
+	// 	memset(recvline, 0, BUFLEN);	
+    // }   
 
-	if (bytes_read < 0)
-		errexit("Error reading from socket!", NULL);
-
-	return http_response;
+	// if (bytes_read < 0)
+	// 	errexit("Error reading from socket!", NULL);
 }
 
 
@@ -254,11 +328,11 @@ void set_hostname(char *host_and_path, char **hostname)
 void set_url_filename(char **url_filename, char *host_and_path, char *hostname) 
 {
 	*url_filename = host_and_path + strlen(hostname);
-	printv("URL filename: %s\n", *url_filename);
 
 	if (strlen(*url_filename) == 0) {
 		*url_filename = PATH_DELIMITER;
 	}
+	printv("URL filename: %s\n", *url_filename);
 }
 
 
@@ -266,7 +340,7 @@ void set_url_filename(char **url_filename, char *host_and_path, char *hostname)
  * Handles the -u option.
  * Makes HTTP request using the provided URL
  * */
-void handle_u(char *url, char **host_and_path, char **hostname, char **url_filename) 
+void handle_u(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename) 
 {
 	printv("\n========== Handling -u option ==========\n", NULL);
 	if (is_valid_url(url) == 0) 
@@ -283,14 +357,14 @@ void handle_u(char *url, char **host_and_path, char **hostname, char **url_filen
 	// Pass the pointer to the required values, not the double pointers
 	int sd = connect_to_socket(*hostname);
 	send_http_request(sd, *hostname, *url_filename);
-	char *http_response = read_http_response(sd);
+	read_http_response(sd, output_filename);
 	close(sd);
 	
 	// * Get content and headers from HTTP response
 	// Remember: content will include end of header (need to strip end of header)
-	http_content = strstr(http_response, END_OF_HEADER) + strlen(END_OF_HEADER);	
-	strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
-	free(http_response);
+	// http_content = strstr(http_response, END_OF_HEADER) + strlen(END_OF_HEADER);	
+	// strncpy(http_headers, http_response, strlen(http_response) - strlen(http_content));
+	// free(http_response);
 }
 
 
@@ -391,8 +465,8 @@ void handle_s()
  * */
 void handle_required_args(char *url, char **host_and_path, char **hostname, char **url_filename, char *output_filename)
 {
-	handle_u(url, host_and_path, hostname, url_filename);
-	handle_o(output_filename);
+	handle_u(url, output_filename, host_and_path, hostname, url_filename);
+	// handle_o(output_filename);
 }
 
 
