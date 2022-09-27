@@ -211,21 +211,36 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 
 
 /**
- * Reads the HTTP response from the server.
- * Note that we also write the response out to a file if response status is 200 OK.
+ * Writes the HTTP response to the output file.
+ * Use fread() and fwrite() to allow downloading both binary and HTML files
  * */
-void read_http_response(int sd, char *output_filename)
+void write_to_file(char *output_filename, char *http_response, FILE *fd) 
 {
-	char *http_response = malloc(BUFLEN);
 	size_t bytes_read;
+	FILE *output_file = fopen(output_filename, "wb");
+	int byte_size = 1;
 
-	// Wrap the socket with a FILE* so that we can read the socket using fgets()
-	FILE *fd;
-	if ((fd = fdopen(sd, "r")) == NULL) {
-		errexit("fdopen failed", NULL);
+	if (output_file == NULL)
+		printf("can't open output file");
+
+	// ? bytes_read correct?
+	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
+		// If we wrote fewer bytes than we read, there was an error
+		if (fwrite(http_response, byte_size, bytes_read, output_file) != bytes_read) 
+			printf("Failed to write to file!");
+			// ? Should we just return here? How to make sure we close the file pointers?
 	}
 
-	// * Read header lines
+	if (ferror(fd))
+		printf("Error reading from socket!", NULL); 
+
+	// Remember to close file pointer
+	fclose(output_file);
+}
+
+
+void read_header_lines(char *http_response, FILE *fd) 
+{
 	for (;;) {
 		// ? Use BUFLEN, not sizeof(http_response)
 		if (fgets(http_response, BUFLEN, fd) == NULL) {
@@ -235,12 +250,28 @@ void read_http_response(int sd, char *output_filename)
 		// Build header string with current header line
 		strcat(http_headers, http_response);
 		if (strcmp(CRLF, http_response) == 0) {
-			// this marks the end of header lines: get out of the for loop.
 			printv("Reached end of header!\n", NULL);
 			break;
 		}
 	}
 	printv("Here is the header:\n----------\n%s----------\n", http_headers);
+}
+
+/**
+ * Reads the HTTP response from the server.
+ * Note that we also write the response out to a file if response status is 200 OK.
+ * */
+void read_http_response(int sd, char *output_filename)
+{
+	char *http_response = malloc(BUFLEN);
+
+	// Wrap the socket with a FILE* so that we can read the socket using fgets()
+	FILE *fd;
+	if ((fd = fdopen(sd, "r")) == NULL) {
+		errexit("fdopen failed", NULL);
+	}
+
+	read_header_lines(http_response, fd);
 
 	// If response was not 200 OK, skip writing to file
     if (strstr(http_headers, SUCCESS_CODE) == NULL)
@@ -250,28 +281,9 @@ void read_http_response(int sd, char *output_filename)
     }
 
 	// * Read and write file contents to output file
-	// write_to_file(output_filename, http_response, fd);
-	// Use fread() and fwrite() to allow downloading both binary and HTML files
-	FILE *outputFile = fopen(output_filename, "wb");
-	if (outputFile == NULL)
-	printf("can't open output file");
+	write_to_file(output_filename, http_response, fd);
 
-	int byte_size = 1;
-	// ? bytes_read correct?
-	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
-		// If we wrote fewer bytes than we read, there was an error
-		if (fwrite(http_response, byte_size, bytes_read, outputFile) != bytes_read) 
-			printf("Failed to write to file!");
-			// ? Should we just return here? How to make sure we close the file pointers?
-	}
-
-	if (ferror(fd))
-		printf("Error reading from socket!", NULL); 
-
-	// Remember to close file pointers
-	fclose(outputFile);
-
-	// Closing fd pointer also closes the socket
+	// Close fd pointe, which also closes the socket
 	fclose(fd);
 	printv("Done writing to file!\n", NULL);
 }
