@@ -378,7 +378,7 @@ void print_lines(char *lines, char *prefix)
 	
 	/* walk through other tokens */
 	while (line != NULL ) {
-		printf("%s: %s\n", prefix, line);
+		printf("%s: %s\r\n", prefix, line);
 		line = strtok(NULL, CRLF);
 	}
 }
