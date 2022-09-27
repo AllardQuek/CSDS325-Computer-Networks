@@ -5,7 +5,7 @@ REQ: GET /mallman/test-files/small-test.dat HTTP/1.0
 REQ: Host: www.icir.org
 REQ: User-Agent: CWRU CSDS 325 Client 1.0
 RSP: HTTP/1.1 200 OK
-RSP: Date: Tue, 27 Sep 2022 08:53:17 GMT
+RSP: Date: Tue, 27 Sep 2022 20:15:39 GMT
 RSP: Server: Apache
 RSP: Last-Modified: Fri, 23 Sep 2022 12:33:10 GMT
 RSP: ETag: "64-5e95761746d80"
