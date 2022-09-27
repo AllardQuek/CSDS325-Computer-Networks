@@ -2,6 +2,9 @@
  * CSDS 325 Project 2 (2022 Fall Semester)
  * 
  * Author: Allard Quek
+ * Case network ID: axq54
+ * Filename: proj2.c
+ * Date Created: 22 September 2022
  *
  * The second project of the semester involves writing a simple command line-based web client.
  * The aim of this project is to
