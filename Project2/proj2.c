@@ -222,21 +222,24 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 	int byte_size = 1;
 
 	if (output_file == NULL)
-		printf("Failed to open output file!");
+		printf("%sFailed to open output file!\n", ERROR_PREFIX);
+		// ? Why returning stops output from writing?
+		// return;
 
 	// ? bytes_read correct?
 	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
 		// If we wrote fewer bytes than we read, there was an error
 		if (fwrite(http_response, byte_size, bytes_read, output_file) != bytes_read) 
-			printf("Failed to write to file!");
+			printf("%sFailed to write to file!", ERROR_PREFIX);
 			// ? Should we just return here? How to make sure we close the file pointers?
 	}
 
 	if (ferror(fd))
-		printf("Error reading from socket!", NULL); 
+		printf("%sCould not read from socket!", ERROR_PREFIX); 
 
 	// Remember to close file pointer
 	fclose(output_file);
+	printv("Done writing to file!\n", NULL);
 }
 
 
@@ -291,7 +294,6 @@ void read_http_response(int sd, char *output_filename)
 
 	// Close fd pointer, which also closes the socket
 	fclose(fd);
-	printv("Done writing to file!\n", NULL);
 }
 
 
