@@ -12,6 +12,7 @@
  * Some resources:
  * - https://www.tutorialspoint.com/c_standard_library/c_function_fread.htm
  * - https://www.tutorialspoint.com/c_standard_library/c_function_fwrite.htm
+ * - https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-write-write-data-file-socket
  * */
 
 
@@ -164,7 +165,7 @@ int connect_to_socket(char *hostname)
         errexit("Cannot find name: %s", hostname);
 
     // Set endpoint information 
-	// Zero out the socket address
+	// ? Zero out the socket address
     memset((char *)&sin, 0x0, sizeof(sin));	
     sin.sin_family = AF_INET;
     sin.sin_port = htons(HTTP_PORT);
@@ -198,13 +199,13 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 			"Host: %s\r\n"
 			"User-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", 
 			url_filename, hostname);
-	
-	// size_t request_size = strlen(http_request);
+			
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
-	// Take note of value for msgSize
-	// if (write(sd, http_request, request_size) != request_size) { //Send bytes
-	if (write(sd, http_request, BUFLEN) != BUFLEN) { //Send bytes
+	// ? Why need third parameter if it is just length of buffer?
+	// size_t request_size = strlen(http_request);
+	// if (write(sd, http_request, request_size) != request_size) { 
+	if (write(sd, http_request, BUFLEN) != BUFLEN) { 
         errexit("Error writing to socket!", NULL);
     }
 }
@@ -221,7 +222,8 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 	int byte_size = 1;
 
 	if (output_file == NULL)
-		printf("can't open output file");
+		printf("Failed to open output file!");
+		return;
 
 	// ? bytes_read correct?
 	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
@@ -239,10 +241,14 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 }
 
 
+/**
+ * Reads the HTTP response header line by line, saving them in a variable.
+ * */
 void read_header_lines(char *http_response, FILE *fd) 
 {
 	for (;;) {
-		// ? Use BUFLEN, not sizeof(http_response)
+		// ? Use BUFLEN, not sizeof(http_response) but should be length of str used?
+		// https://www.tutorialspoint.com/c_standard_library/c_function_fgets.htm
 		if (fgets(http_response, BUFLEN, fd) == NULL) {
 			errexit("Could not get HTTP response!", NULL);
 		}
@@ -257,6 +263,7 @@ void read_header_lines(char *http_response, FILE *fd)
 	printv("Here is the header:\n----------\n%s----------\n", http_headers);
 }
 
+
 /**
  * Reads the HTTP response from the server.
  * Note that we also write the response out to a file if response status is 200 OK.
@@ -265,10 +272,10 @@ void read_http_response(int sd, char *output_filename)
 {
 	char *http_response = malloc(BUFLEN);
 
-	// Wrap the socket with a FILE* so that we can read the socket using fgets()
+	// Associate socket stream to a file pointer so we can use fetgs() to read the socket
 	FILE *fd;
 	if ((fd = fdopen(sd, "r")) == NULL) {
-		errexit("fdopen failed", NULL);
+		errexit("Failed to open file pointer for socket!", NULL);
 	}
 
 	read_header_lines(http_response, fd);
@@ -283,7 +290,7 @@ void read_http_response(int sd, char *output_filename)
 	// * Read and write file contents to output file
 	write_to_file(output_filename, http_response, fd);
 
-	// Close fd pointe, which also closes the socket
+	// Close fd pointer, which also closes the socket
 	fclose(fd);
 	printv("Done writing to file!\n", NULL);
 }
