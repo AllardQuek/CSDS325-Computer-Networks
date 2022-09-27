@@ -82,6 +82,49 @@ int main(int argc, char *argv [])
 	printf("BEFORE HOST PATH is: %s\n", *host_and_path);
 	printf("NOW URL is: %s\n", url);
 	printf("NOW HOST PATH is: %s\n", *host_and_path);
+
+
+    // * Naive read of HTTP response string
+    // * Read HTTP response from server
+	// ? Why cannot place `read` outside of while loop?
+	// ? What if the while loop is executed multiple times?
+    while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
+    {
+		strcpy(http_response, recvline);
+        printv("Here is the HTTP response:\n----------\n%s----------\n", recvline);
+
+		// ? Zero out after printing current line
+		memset(recvline, 0, BUFLEN);	
+    }   
+
+	if (bytes_read < 0)
+		errexit("Error reading from socket!", NULL); 
+
+
+    // * Sample read HTTP response code
+	// read the 1st line
+	if (fgets(http_response, sizeof(http_response) + 1, fd) == NULL) {
+		if (ferror(fd))
+			errexit("IO error", NULL);
+		else {
+			errexit("server terminated connection without response", NULL);
+		}
+	} 
+
+	// Check if we get "HTTP/1.0" or "HTTP/1.1"
+	printf("HERE http_response: %s\n", http_response);
+	if (strncmp("HTTP/1.0", http_response, 9) != 0 && strncmp("HTTP/1.1", http_response, 9) != 0) {
+		errexit("unknown protocol response: %s\n", http_response);
+	}
+
+	// DO NOT PROCEED TO WRITE if we don't get response code 200
+	if (strncmp("200", http_response + 9 + 1, 3) != 0) {
+		printf("PRINTING: RESPONSE CODE IS NOT 200, NO WRITING\n");
+		return;
+	}
+
+	// If we're here, it means we have a successful HTTP
+	// response (i.e., response code 200).
 }
 
 

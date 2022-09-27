@@ -207,69 +207,49 @@ void read_http_response(int sd, char *output_filename)
 {
 	// char recvline[BUFLEN];
 	char *http_response = malloc(BUFLEN);
+	size_t bytes_read;
 
-	// int bytes_read;
-
-
-	// TODO: Write a part of response to file each time (-o option)
-	// * ADDED
-	// wrap the socket with a FILE* so that we can read the socket using fgets()
+	// Wrap the socket with a FILE* so that we can read the socket using fgets()
 	FILE *fd;
 	if ((fd = fdopen(sd, "r")) == NULL) {
 		errexit("fdopen failed", NULL);
 	}
 
-	// read the 1st line
-	// if (fgets(http_response, sizeof(http_response) + 1, fd) == NULL) {
-	// 	if (ferror(fd))
-	// 		errexit("IO error", NULL);
-	// 	else {
-	// 		errexit("server terminated connection without response", NULL);
-	// 	}
-	// } 
-
-	// Check if we get "HTTP/1.0" or "HTTP/1.1"
-	// printf("HERE http_response: %s\n", http_response);
-	// if (strncmp("HTTP/1.0", http_response, 9) != 0 && strncmp("HTTP/1.1", http_response, 9) != 0) {
-	// 	errexit("unknown protocol response: %s\n", http_response);
-	// }
-
-	// DO NOT PROCEED TO WRITE if we don't get response code 200
-	// if (strncmp("200", http_response + 9 + 1, 3) != 0) {
-	// 	printf("PRINTING: RESPONSE CODE IS NOT 200, NO WRITING\n");
-	// 	return;
-	// }
-
-	// If we're here, it means we have a successful HTTP
-	// response (i.e., response code 200).
-
-	// Now, skip the header lines.
+	// * Read header lines
 	for (;;) {
-		if (fgets(http_response, sizeof(http_response), fd) == NULL) {
+		// ? Use BUFLEN, not sizeof(http_response)
+		if (fgets(http_response, BUFLEN, fd) == NULL) {
 			errexit("Could not get HTTP response!", NULL);
 		}
-		printf("HERE is a header line: %s\n", http_response);
+
+		// Build header string with current header line
+		strcat(http_headers, http_response);
 		if (strcmp("\r\n", http_response) == 0) {
 			// this marks the end of header lines: get out of the for loop.
-			printf("END OF HEADER!");
+			printv("Reached end of header!\n", NULL);
 			break;
 		}
 	}
+	printv("Here is the header:\n----------\n%s----------\n", http_headers);
 
-	// Now it's time to read the file.
-	// We switch to fread()/fwrite() so that we can download a binary
-	// file as well as an HTML file.
+	// * Read file contents
+	// We switch to fread()/fwrite() so that we can download both binary and HTML files
 	FILE *outputFile = fopen(output_filename, "wb");
 	if (outputFile == NULL)
 	printf("can't open output file");
 
-	size_t n;
-	while ((n = fread(http_response, 1, sizeof(http_response), fd)) > 0) {
-	if (fwrite(http_response, 1, n, outputFile) != n) 
-		printf("fwrite failed");
+	// ? bytes_read correct?
+	// https://www.tutorialspoint.com/c_standard_library/c_function_fwrite.htm
+	while ((bytes_read = fread(http_response, 1, sizeof(http_response), fd)) > 0) {
+		int byte_size = 1;
+		if (fwrite(http_response, byte_size, bytes_read, outputFile) != bytes_read) 
+			printf("fwrite failed");
 	}
-	// fread() returns 0 on EOF or on error
-	// so we need to check if there was an error.
+
+	if (bytes_read < 0)
+		printf("Error reading from socket!", NULL); 
+
+	// fread() returns 0 on EOF or on error so we need to check if there was an error.
 	if (ferror(fd))
 		printf("fread failed");
 
@@ -278,21 +258,7 @@ void read_http_response(int sd, char *output_filename)
 
 	// closing fd closes the underlying socket as well.
 	fclose(fd);
-
-	// * Read HTTP response from server
-	// ? Why cannot place `read` outside of while loop?
-	// ? What if the while loop is executed multiple times?
-    // while ((bytes_read = read(sd, recvline, BUFLEN)) > 0) 
-    // {
-	// 	strcpy(http_response, recvline);
-    //     printv("Here is the HTTP response:\n----------\n%s----------\n", recvline);
-
-	// 	// ? Zero out after printing current line
-	// 	memset(recvline, 0, BUFLEN);	
-    // }   
-
-	// if (bytes_read < 0)
-	// 	errexit("Error reading from socket!", NULL);
+	printv("Done writing to file!\n", NULL);
 }
 
 
