@@ -185,7 +185,7 @@ int connect_to_socket(char *hostname)
  * */
 void send_http_request(int sd, char *hostname, char *url_filename)
 {
-	snprintf(http_request, BUFLEN, "GET %s HTTP/1.0 \r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
+	snprintf(http_request, BUFLEN, "GET %s HTTP/1.0\r\nHost: %s\r\nUser-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", url_filename, hostname);
 	size_t request_size = strlen(http_request);
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
