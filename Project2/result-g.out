@@ -1,0 +1,15 @@
+INF: hostname = www.icsi.berkeley.edu
+INF: web_filename = /icsi/sites/all/themes/icsi/logo.png
+INF: output_filename = logo1.png
+REQ: GET /icsi/sites/all/themes/icsi/logo.png HTTP/1.0
+REQ: Host: www.icsi.berkeley.edu
+REQ: User-Agent: CWRU CSDS 325 Client 1.0
+RSP: HTTP/1.1 200 OK
+RSP: Date: Tue, 27 Sep 2022 14:56:24 GMT
+RSP: Server: Apache
+RSP: Last-Modified: Sun, 29 Jan 2012 03:47:12 GMT
+RSP: ETag: "1c2200-3d86-4b7a295c2d000"
+RSP: Accept-Ranges: bytes
+RSP: Content-Length: 15750
+RSP: Connection: close
+RSP: Content-Type: image/png

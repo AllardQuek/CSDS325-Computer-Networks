@@ -8,11 +8,6 @@
  * (i) get your feet wet with writing C/C++,
  * (ii) write a program that exchanges information with another computer over a network and
  * (iii) start concretely thinking about protocols.
- * 
- * Some resources:
- * - https://www.tutorialspoint.com/c_standard_library/c_function_fread.htm
- * - https://www.tutorialspoint.com/c_standard_library/c_function_fwrite.htm
- * - https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-write-write-data-file-socket
  * */
 
 
@@ -202,9 +197,9 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 	
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
-	// Take note of value for msgSize
+	// ? Why need third parameter if it is just length of buffer?
 	// size_t request_size = strlen(http_request);
-	// if (write(sd, http_request, request_size) != request_size) {
+	// if (write(sd, http_request, request_size) != request_size) { 
 	if (write(sd, http_request, BUFLEN) != BUFLEN) {
         errexit("Error writing to socket!", NULL);
     }
@@ -222,10 +217,11 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 	int byte_size = 1;
 
 	if (output_file == NULL)
+	{
 		printf("%sFailed to open output file!\n", ERROR_PREFIX);
-		// ? Why returning stops output from writing?
-		// return;
-
+		fclose(output_file);
+		return;
+	} 
 	// ? bytes_read correct?
 	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
 		// If we wrote fewer bytes than we read, there was an error
@@ -239,7 +235,7 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 
 	// Remember to close file pointer
 	fclose(output_file);
-	printv("Done writing to file!\n", NULL);
+	printv("Done writing to %s!\n", output_filename);
 }
 
 
