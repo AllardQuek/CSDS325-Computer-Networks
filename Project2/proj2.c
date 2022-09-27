@@ -199,13 +199,13 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 			"Host: %s\r\n"
 			"User-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", 
 			url_filename, hostname);
-			
+	
 	printv("Here is the request:\n----------\n\%s----------\n", http_request);
 
-	// ? Why need third parameter if it is just length of buffer?
+	// Take note of value for msgSize
 	// size_t request_size = strlen(http_request);
-	// if (write(sd, http_request, request_size) != request_size) { 
-	if (write(sd, http_request, BUFLEN) != BUFLEN) { 
+	// if (write(sd, http_request, request_size) != request_size) {
+	if (write(sd, http_request, BUFLEN) != BUFLEN) {
         errexit("Error writing to socket!", NULL);
     }
 }
@@ -223,7 +223,6 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 
 	if (output_file == NULL)
 		printf("Failed to open output file!");
-		return;
 
 	// ? bytes_read correct?
 	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
