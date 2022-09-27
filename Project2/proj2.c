@@ -172,7 +172,9 @@ int connect_to_socket(char *hostname)
     // Allocate a socket (would be SOCK_DGRAM for UDP)
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
     if (sd < 0)
+    {
         errexit("Cannot create socket!\n",NULL);
+    }
 
 	if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
