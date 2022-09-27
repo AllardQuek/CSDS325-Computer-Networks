@@ -382,7 +382,7 @@ void handle_i(char *hostname, char *url_filename, char *output_filename)
 {
 	printv("\n========== Handling -i option ==========\n", NULL);
 	printf("INF: hostname = %s\n", hostname);
-	printf("INF: url_filename = %s\n", url_filename);
+	printf("INF: web_filename = %s\n", url_filename);
 	printf("INF: output_filename = %s\n", output_filename);
 }
 
