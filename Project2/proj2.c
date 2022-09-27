@@ -8,6 +8,10 @@
  * (i) get your feet wet with writing C/C++,
  * (ii) write a program that exchanges information with another computer over a network and
  * (iii) start concretely thinking about protocols.
+ * 
+ * Some resources:
+ * - https://www.tutorialspoint.com/c_standard_library/c_function_fread.htm
+ * - https://www.tutorialspoint.com/c_standard_library/c_function_fwrite.htm
  * */
 
 
@@ -32,7 +36,7 @@
 #define PATH_DELIMITER "/"
 #define CRLF "\r\n"
 #define END_OF_HEADER "\r\n\r\n"
-#define SUCCESS_CODE "301"
+#define SUCCESS_CODE "200"
 
 // Define option flags
 static bool is_option_u = false;
@@ -68,7 +72,7 @@ void usage(char *progname)
 
 
 /**
- * Prints information if verbose flag is set to true.
+ * Prints debug information if verbose flag is set to true.
  * */
 void printv(char *msg_format, char *arg)
 {
@@ -121,10 +125,10 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 				is_option_v = true;
 				break;
 			case ':':
-				printf("%s Option %c is missing a value \n", ERROR_PREFIX, optopt);
+				printf("%sOption %c is missing a value \n", ERROR_PREFIX, optopt);
 				break;
 			case '?':
-				printf("%s Unknown option %c\n", ERROR_PREFIX, optopt);
+				printf("%sUnknown option %c\n", ERROR_PREFIX, optopt);
 				usage(argv[0]);
 				break;
 		}
@@ -143,6 +147,10 @@ void check_required_args()
 }
 
 
+/**
+ * Connects to socket given a hostname.
+ * Returns a socket descriptor.
+ * */
 int connect_to_socket(char *hostname)
 {
 	struct sockaddr_in sin;
@@ -202,9 +210,12 @@ void send_http_request(int sd, char *hostname, char *url_filename)
 }
 
 
+/**
+ * Reads the HTTP response from the server.
+ * Note that we also write the response out to a file if response status is 200 OK.
+ * */
 void read_http_response(int sd, char *output_filename)
 {
-	// char recvline[BUFLEN];
 	char *http_response = malloc(BUFLEN);
 	size_t bytes_read;
 
@@ -231,31 +242,36 @@ void read_http_response(int sd, char *output_filename)
 	}
 	printv("Here is the header:\n----------\n%s----------\n", http_headers);
 
-	// * Read file contents
+	// If response was not 200 OK, skip writing to file
+    if (strstr(http_headers, SUCCESS_CODE) == NULL)
+    {
+        printf("Response from server was not OK. Output will not be written to file.\n");
+        return;
+    }
+
+	// * Read and write file contents to output file
+	// write_to_file(output_filename, http_response, fd);
 	// Use fread() and fwrite() to allow downloading both binary and HTML files
 	FILE *outputFile = fopen(output_filename, "wb");
 	if (outputFile == NULL)
 	printf("can't open output file");
 
+	int byte_size = 1;
 	// ? bytes_read correct?
-	// https://www.tutorialspoint.com/c_standard_library/c_function_fwrite.htm
-	while ((bytes_read = fread(http_response, 1, sizeof(http_response), fd)) > 0) {
-		int byte_size = 1;
+	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
+		// If we wrote fewer bytes than we read, there was an error
 		if (fwrite(http_response, byte_size, bytes_read, outputFile) != bytes_read) 
-			printf("fwrite failed");
+			printf("Failed to write to file!");
+			// ? Should we just return here? How to make sure we close the file pointers?
 	}
 
-	if (bytes_read < 0)
+	if (ferror(fd))
 		printf("Error reading from socket!", NULL); 
 
-	// fread() returns 0 on EOF or on error so we need to check if there was an error.
-	if (ferror(fd))
-		printf("fread failed");
-
-	// Remember to close file pointer
+	// Remember to close file pointers
 	fclose(outputFile);
 
-	// closing fd closes the underlying socket as well.
+	// Closing fd pointer also closes the socket
 	fclose(fd);
 	printv("Done writing to file!\n", NULL);
 }
@@ -273,6 +289,9 @@ int is_valid_url(char *url)
 }
 
 
+/**
+ * Sets the variable for storing the hostname and path.
+ * */
 void set_host_and_path(char *url, char **host_and_path)
 {
 	*host_and_path = url + strlen(URL_PREFIX);
@@ -280,6 +299,9 @@ void set_host_and_path(char *url, char **host_and_path)
 }
 
 
+/**
+ * Sets the variable for storing the hostname.
+ * */
 void set_hostname(char *host_and_path, char **hostname)
 {
 	// We should avoid moving the original pointers else the values would change
@@ -291,6 +313,9 @@ void set_hostname(char *host_and_path, char **hostname)
 }
 
 
+/**
+ * Sets the variable for storing the url filename.
+ * */
 void set_url_filename(char **url_filename, char *host_and_path, char *hostname) 
 {
 	*url_filename = host_and_path + strlen(hostname);
@@ -347,6 +372,9 @@ void handle_i(char *hostname, char *url_filename, char *output_filename)
 }
 
 
+/**
+ * Prints each individual line with a prefix from the given lines.
+ * */
 void print_lines(char *lines, char *prefix)
 {
 	char *line;
@@ -360,6 +388,7 @@ void print_lines(char *lines, char *prefix)
 		line = strtok(NULL, CRLF);
 	}
 }
+
 
 /**
  * Handles the -c option.
@@ -389,9 +418,26 @@ void handle_s()
 /**
  * Handles required arguments -u and -o.
  * */
-void handle_required_args(char *url, char **host_and_path, char **hostname, char **url_filename, char *output_filename)
+void handle_required_args(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename)
 {
-	handle_u(url, output_filename, host_and_path, hostname, url_filename);
+	// handle_u(url, output_filename, host_and_path, hostname, url_filename);
+	printv("\n========== Handling -u option ==========\n", NULL);
+	if (is_valid_url(url) == 0) 
+		errexit("Url must start with %s", URL_PREFIX);
+	
+	printv("Valid URL received: %s\n", url);
+
+	// * Split url into hostname and url_filename
+	set_host_and_path(url, host_and_path);
+	set_hostname(*host_and_path, hostname);
+	set_url_filename(url_filename, *host_and_path, *hostname);
+
+	// * Make HTTP request
+	// Pass the pointer to the required values, not the double pointers
+	int sd = connect_to_socket(*hostname);
+	send_http_request(sd, *hostname, *url_filename);
+	read_http_response(sd, output_filename);
+	close(sd);
 }
 
 
@@ -425,7 +471,7 @@ int main(int argc, char *argv[])
 	parse_args(argc, argv, &url, &output_filename);
 	printv("Starting command-line based web client...\n", NULL);
 	check_required_args();
-	handle_required_args(url, &host_and_path, &hostname, &url_filename, output_filename);
+	handle_required_args(url, output_filename, &host_and_path, &hostname, &url_filename);
 	handle_optional_args(hostname, url_filename, output_filename);
 	exit(0);
 }
