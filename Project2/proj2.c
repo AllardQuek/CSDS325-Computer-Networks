@@ -37,12 +37,17 @@
 #define END_OF_HEADER "\r\n\r\n"
 #define SUCCESS_CODE "200"
 
+// For -f option (graduate level requirement)
+#define REDIRECT_CODE "HTTP/1.0 3"
+#define LOCATION_HEADER "Location: "
+
 // Define option flags
 static bool is_option_u = false;
 static bool is_option_o = false;
 static bool is_option_i = false;
 static bool is_option_c = false;
 static bool is_option_s = false;
+static bool is_option_f = false;
 static bool is_option_v = false;
 
 // Define pointers for required information
@@ -50,7 +55,7 @@ static char http_request[BUFLEN];
 static char http_headers[BUFLEN];
 
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
-static const char *OPT_STRING = ":u:o:csiv";
+static const char *OPT_STRING = ":u:o:csifv";
 
 
 /**
@@ -64,6 +69,7 @@ void usage(char *progname)
 	fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
 	fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
 	fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
+	fprintf(stderr, "   -f               Follow URL redirects\n");
 	fprintf(stderr, "   -v               Print debug info\n");
 	exit(1);
 }
@@ -118,6 +124,9 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
 				break;
 			case 's':
 				is_option_s = true;
+				break;
+			case 'f':
+				is_option_f = true;
 				break;
 			case 'v':
 				is_option_v = true;
@@ -425,6 +434,37 @@ void handle_required_args(char *url, char *output_filename, char **host_and_path
 
 
 /**
+ * Handles the -s option.
+ * Follows redirectiosn from the web server.
+ * */
+void handle_f(char *hostname, char *output_filename) 
+{
+	printv("\n========== Handling -f option ==========\n", NULL);
+	// If we get 300 response for redirect
+	// Make a copy of http_headers to use strstr
+	char *http_headers_copy = strdup(http_headers);
+	if (strstr(http_headers_copy, REDIRECT_CODE) == NULL)
+		return;
+
+	// Find new URL: search for "Location: "
+	printv("HERE are the http headers: %s", http_headers);
+	char *location = strstr(http_headers, LOCATION_HEADER);
+	if (location == NULL)
+		errexit("Could not find location header in response", NULL);
+	
+	// Get the new URL
+	char *new_url_filename = location + strlen(LOCATION_HEADER);
+	printv("New URL: %s\n", new_url_filename);
+	
+	// Make request again
+	int sd = connect_to_socket(hostname);
+	send_http_request(sd, hostname, new_url_filename);
+	read_http_response(sd, output_filename);
+	return;
+}
+
+
+/**
  * Handles optional arguments in specified order; simply to print output.
  * */
 void handle_optional_args(char *hostname, char *url_filename, char *output_filename)
@@ -439,6 +479,10 @@ void handle_optional_args(char *hostname, char *url_filename, char *output_filen
 
 	if (is_option_s) {
 		handle_s();
+	}
+
+	if (is_option_f) {
+		handle_f(hostname, output_filename);
 	}
 }
 
