@@ -1,0 +1,9 @@
+NOTES FOR PROJECT 2
+Spent a lot of time on argument parsing and learning how to use C, but a best-effort was made to follow as many best practices
+and C conventions as possible.
+
+I attempted the -f option but did not have time to finish implementing it. My attempts inclusion does not seem to affect the
+functionality of the other options, but in the event that are issues, I would recommend commenting out the -f option in the
+source code.
+
+Feel free to reach out to axq54@case.edu with any questions or concerns.
