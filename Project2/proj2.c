@@ -63,15 +63,15 @@ static const char *OPT_STRING = ":u:o:csifv";
  * */
 void usage(char *progname)
 {
-	fprintf(stderr, "%s -u URL [-i] [-c] [-s] -o filename \n", progname);
-	fprintf(stderr, "   -u <url>         URL the web client will access\n");
-	fprintf(stderr, "   -o <filename>    Filename where the downloaded contents of the supplied URL will be written\n");
-	fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
-	fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
-	fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
-	fprintf(stderr, "   -f               Follow URL redirects\n");
-	fprintf(stderr, "   -v               Print debug info\n");
-	exit(1);
+    fprintf(stderr, "%s -u URL [-i] [-c] [-s] -o filename \n", progname);
+    fprintf(stderr, "   -u <url>         URL the web client will access\n");
+    fprintf(stderr, "   -o <filename>    Filename where the downloaded contents of the supplied URL will be written\n");
+    fprintf(stderr, "   -i               Print information about the given command line parameters to standard output\n");
+    fprintf(stderr, "   -c               Print the HTTP request sent by the web client to the web server to standard output\n");
+    fprintf(stderr, "   -s               Print the HTTP response header received from the web server to standard output\n");
+    fprintf(stderr, "   -f               Follow URL redirects\n");
+    fprintf(stderr, "   -v               Print debug info\n");
+    exit(1);
 }
 
 
@@ -80,8 +80,8 @@ void usage(char *progname)
  * */
 void printv(char *msg_format, char *arg)
 {
-	if (is_option_v)
-		fprintf(stdout, msg_format, arg);
+    if (is_option_v)
+        fprintf(stdout, msg_format, arg);
 }
 
 
@@ -90,7 +90,7 @@ void printv(char *msg_format, char *arg)
  * */
 int errexit(char *msg_format, char *arg)
 {
-	fprintf(stderr, ERROR_PREFIX);
+    fprintf(stderr, ERROR_PREFIX);
     fprintf(stderr, msg_format, arg);
     fprintf(stderr, "\n");
     exit(ERROR);
@@ -102,43 +102,43 @@ int errexit(char *msg_format, char *arg)
  * */
 void parse_args(int argc, char *argv [], char **url, char **output_filename) 
 {
-	int opt;
-	
-	while((opt = getopt(argc, argv, OPT_STRING)) != -1)
-	{	
-		switch(opt)
-		{
-			case 'u':
-				*url = optarg;
-				is_option_u = true;
-				break;
-			case 'o':
-				*output_filename = optarg;
-				is_option_o = true;
-				break;
-			case 'i':
-				is_option_i = true;
-				break;
-			case 'c':
-				is_option_c = true;
-				break;
-			case 's':
-				is_option_s = true;
-				break;
-			case 'f':
-				is_option_f = true;
-				break;
-			case 'v':
-				is_option_v = true;
-				break;
-			case ':':
-				printf("%sOption %c is missing a value \n", ERROR_PREFIX, optopt);
-				usage(argv[0]);
-			case '?':
-				printf("%sUnknown option %c\n", ERROR_PREFIX, optopt);
-				usage(argv[0]);
-		}
-	}
+    int opt;
+    
+    while((opt = getopt(argc, argv, OPT_STRING)) != -1)
+    {	
+        switch(opt)
+        {
+            case 'u':
+                *url = optarg;
+                is_option_u = true;
+                break;
+            case 'o':
+                *output_filename = optarg;
+                is_option_o = true;
+                break;
+            case 'i':
+                is_option_i = true;
+                break;
+            case 'c':
+                is_option_c = true;
+                break;
+            case 's':
+                is_option_s = true;
+                break;
+            case 'f':
+                is_option_f = true;
+                break;
+            case 'v':
+                is_option_v = true;
+                break;
+            case ':':
+                printf("%sOption %c is missing a value \n", ERROR_PREFIX, optopt);
+                usage(argv[0]);
+            case '?':
+                printf("%sUnknown option %c\n", ERROR_PREFIX, optopt);
+                usage(argv[0]);
+        }
+    }
 }
 
 
@@ -147,9 +147,9 @@ void parse_args(int argc, char *argv [], char **url, char **output_filename)
  * */
 void check_required_args() 
 {
-	if (!is_option_u || !is_option_o) {
-		errexit("Required options: -u -o", NULL);
-	}
+    if (!is_option_u || !is_option_o) {
+        errexit("Required options: -u -o", NULL);
+    }
 }
 
 
@@ -159,12 +159,12 @@ void check_required_args()
  * */
 int connect_to_socket(char *hostname)
 {
-	struct sockaddr_in sin;
+    struct sockaddr_in sin;
     struct hostent *hinfo;
     struct protoent *protoinfo;
     int sd;
 
-	// Lookup the hostname
+    // Lookup the hostname
     hinfo = gethostbyname(hostname);
     if (hinfo == NULL)
         errexit("Cannot find name: %s", hostname);
@@ -185,12 +185,12 @@ int connect_to_socket(char *hostname)
         errexit("Cannot create socket!\n",NULL);
     }
 
-	if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
         errexit("Cannot connect!", NULL);
     }
 
-	return sd;
+    return sd;
 }
 
 
@@ -199,17 +199,17 @@ int connect_to_socket(char *hostname)
  * */
 void send_http_request(int sd, char *hostname, char *url_filename)
 {
-	// Note that C concatenates adjacent string literals
-	snprintf(http_request, BUFLEN, 
-			"GET %s HTTP/1.0\r\n"
-			"Host: %s\r\n"
-			"User-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", 
-			url_filename, hostname);
-	
-	printv("Here is the request:\n----------\n\%s----------\n", http_request);
-	size_t request_size = strlen(http_request);
+    // Note that C concatenates adjacent string literals
+    snprintf(http_request, BUFLEN, 
+            "GET %s HTTP/1.0\r\n"
+            "Host: %s\r\n"
+            "User-Agent: CWRU CSDS 325 Client 1.0\r\n\r\n", 
+            url_filename, hostname);
+    
+    printv("Here is the request:\n----------\n\%s----------\n", http_request);
+    size_t request_size = strlen(http_request);
 
-	if (write(sd, http_request, request_size) != request_size) { 
+    if (write(sd, http_request, request_size) != request_size) { 
         errexit("Error writing to socket!", NULL);
     }
 }
@@ -221,28 +221,28 @@ void send_http_request(int sd, char *hostname, char *url_filename)
  * */
 void write_to_file(char *output_filename, char *http_response, FILE *fd) 
 {
-	size_t bytes_read;
-	FILE *output_file = fopen(output_filename, "wb");
-	int byte_size = 1;
+    size_t bytes_read;
+    FILE *output_file = fopen(output_filename, "wb");
+    int byte_size = 1;
 
-	if (output_file == NULL)
-	{
-		fclose(output_file);
-		errexit("Failed to open output file!", NULL);
-	} 
+    if (output_file == NULL)
+    {
+        fclose(output_file);
+        errexit("Failed to open output file!", NULL);
+    } 
 
-	while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
-		// If we wrote fewer bytes than we read, there was an error
-		if (fwrite(http_response, byte_size, bytes_read, output_file) != bytes_read) 
-			printf("%sFailed to write to file!", ERROR_PREFIX);
-	}
+    while ((bytes_read = fread(http_response, byte_size, sizeof(http_response), fd)) > 0) {
+        // If we wrote fewer bytes than we read, there was an error
+        if (fwrite(http_response, byte_size, bytes_read, output_file) != bytes_read) 
+            printf("%sFailed to write to file!", ERROR_PREFIX);
+    }
 
-	if (ferror(fd))
-		errexit("Could not read from socket!", NULL);
+    if (ferror(fd))
+        errexit("Could not read from socket!", NULL);
 
-	// Remember to close file pointer
-	fclose(output_file);
-	printv("Done writing to %s!\n", output_filename);
+    // Remember to close file pointer
+    fclose(output_file);
+    printv("Done writing to %s!\n", output_filename);
 }
 
 
@@ -251,20 +251,20 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
  * */
 void read_header_lines(char *http_response, FILE *fd) 
 {
-	for (;;) {
-		// BUFLEN just needs to be big enough for current line
-		if (fgets(http_response, BUFLEN, fd) == NULL) {
-			errexit("Could not get HTTP response!", NULL);
-		}
+    for (;;) {
+        // BUFLEN just needs to be big enough for current line
+        if (fgets(http_response, BUFLEN, fd) == NULL) {
+            errexit("Could not get HTTP response!", NULL);
+        }
 
-		// Build header string with current header line
-		strcat(http_headers, http_response);
-		if (strcmp(CRLF, http_response) == 0) {
-			printv("Reached end of header!\n", NULL);
-			break;
-		}
-	}
-	printv("Here is the header:\n----------\n%s----------\n", http_headers);
+        // Build header string with current header line
+        strcat(http_headers, http_response);
+        if (strcmp(CRLF, http_response) == 0) {
+            printv("Reached end of header!\n", NULL);
+            break;
+        }
+    }
+    printv("Here is the header:\n----------\n%s----------\n", http_headers);
 }
 
 
@@ -274,28 +274,28 @@ void read_header_lines(char *http_response, FILE *fd)
  * */
 void read_http_response(int sd, char *output_filename)
 {
-	char *http_response = malloc(BUFLEN);
+    char *http_response = malloc(BUFLEN);
 
-	// Associate socket stream to a file pointer so we can use fetgs() to read the socket
-	FILE *fd;
-	if ((fd = fdopen(sd, "r")) == NULL) {
-		errexit("Failed to open file pointer for socket!", NULL);
-	}
+    // Associate socket stream to a file pointer so we can use fetgs() to read the socket
+    FILE *fd;
+    if ((fd = fdopen(sd, "r")) == NULL) {
+        errexit("Failed to open file pointer for socket!", NULL);
+    }
 
-	read_header_lines(http_response, fd);
+    read_header_lines(http_response, fd);
 
-	// If response was not 200 OK, skip writing to file
+    // If response was not 200 OK, skip writing to file
     if (strstr(http_headers, SUCCESS_CODE) == NULL)
     {
         printf("Response from server was not OK. Output will not be written to file.\n");
         return;
     }
 
-	// * Read and write file contents to output file
-	write_to_file(output_filename, http_response, fd);
+    // * Read and write file contents to output file
+    write_to_file(output_filename, http_response, fd);
 
-	// Close fd pointer, which also closes the socket
-	fclose(fd);
+    // Close fd pointer, which also closes the socket
+    fclose(fd);
 }
 
 
@@ -304,10 +304,10 @@ void read_http_response(int sd, char *output_filename)
  * */
 int is_valid_url(char *url)
 {
-	if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) 
-		return 0;
+    if (strncasecmp(url, URL_PREFIX, strlen(URL_PREFIX)) != 0) 
+        return 0;
 
-	return 1;
+    return 1;
 }
 
 
@@ -316,8 +316,8 @@ int is_valid_url(char *url)
  * */
 void set_host_and_path(char *url, char **host_and_path)
 {
-	*host_and_path = url + strlen(URL_PREFIX);
-	printv("Host and path: %s\n", *host_and_path);
+    *host_and_path = url + strlen(URL_PREFIX);
+    printv("Host and path: %s\n", *host_and_path);
 }
 
 
@@ -327,9 +327,9 @@ void set_host_and_path(char *url, char **host_and_path)
  * */
 void set_hostname(char *host_and_path, char **hostname)
 {
-	char *host_and_path_copy = strdup(host_and_path);
-	*hostname = strtok(host_and_path_copy, PATH_DELIMITER);
-	printv("Hostname: %s\n", *hostname);
+    char *host_and_path_copy = strdup(host_and_path);
+    *hostname = strtok(host_and_path_copy, PATH_DELIMITER);
+    printv("Hostname: %s\n", *hostname);
 }
 
 
@@ -338,12 +338,12 @@ void set_hostname(char *host_and_path, char **hostname)
  * */
 void set_url_filename(char **url_filename, char *host_and_path, char *hostname) 
 {
-	*url_filename = host_and_path + strlen(hostname);
+    *url_filename = host_and_path + strlen(hostname);
 
-	if (strlen(*url_filename) == 0) {
-		*url_filename = PATH_DELIMITER;
-	}
-	printv("URL filename: %s\n", *url_filename);
+    if (strlen(*url_filename) == 0) {
+        *url_filename = PATH_DELIMITER;
+    }
+    printv("URL filename: %s\n", *url_filename);
 }
 
 
@@ -359,10 +359,10 @@ void set_url_filename(char **url_filename, char *host_and_path, char *hostname)
  * */
 void handle_i(char *hostname, char *url_filename, char *output_filename) 
 {
-	printv("\n========== Handling -i option ==========\n", NULL);
-	printf("INF: hostname = %s\n", hostname);
-	printf("INF: web_filename = %s\n", url_filename);
-	printf("INF: output_filename = %s\n", output_filename);
+    printv("\n========== Handling -i option ==========\n", NULL);
+    printf("INF: hostname = %s\n", hostname);
+    printf("INF: web_filename = %s\n", url_filename);
+    printf("INF: output_filename = %s\n", output_filename);
 }
 
 
@@ -371,16 +371,16 @@ void handle_i(char *hostname, char *url_filename, char *output_filename)
  * */
 void print_lines(char *lines, char *prefix)
 {
-	char *line;
+    char *line;
 
-	// Get the first token
-	line = strtok(lines, CRLF);
-	
-	// Find other tokens
-	while (line != NULL ) {
-		printf("%s: %s%s", prefix, line, CRLF);
-		line = strtok(NULL, CRLF);
-	}
+    // Get the first token
+    line = strtok(lines, CRLF);
+    
+    // Find other tokens
+    while (line != NULL ) {
+        printf("%s: %s%s", prefix, line, CRLF);
+        line = strtok(NULL, CRLF);
+    }
 }
 
 
@@ -391,10 +391,10 @@ void print_lines(char *lines, char *prefix)
  * */
 void handle_c() 
 {
-	printv("\n========== Handling -c option ==========\n", NULL);
-	// Terminate request string before new blank line
-	http_request[strlen(http_request) - strlen(CRLF)] = 0;
-	print_lines(http_request, "REQ");
+    printv("\n========== Handling -c option ==========\n", NULL);
+    // Terminate request string before new blank line
+    http_request[strlen(http_request) - strlen(CRLF)] = 0;
+    print_lines(http_request, "REQ");
 }
 
 
@@ -404,8 +404,8 @@ void handle_c()
  * */
 void handle_s()
 {
-	printv("\n========== Handling -s option ==========\n", NULL);
-	print_lines(http_headers, "RSP");
+    printv("\n========== Handling -s option ==========\n", NULL);
+    print_lines(http_headers, "RSP");
 }
 
 
@@ -414,22 +414,22 @@ void handle_s()
  * */
 void handle_required_args(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename)
 {
-	printv("\n========== Handling required options ==========\n", NULL);
-	if (is_valid_url(url) == 0) 
-		errexit("Url must start with %s", URL_PREFIX);
-	printv("Valid URL received: %s\n", url);
+    printv("\n========== Handling required options ==========\n", NULL);
+    if (is_valid_url(url) == 0) 
+        errexit("Url must start with %s", URL_PREFIX);
+    printv("Valid URL received: %s\n", url);
 
-	// * Split url into hostname and url_filename
-	set_host_and_path(url, host_and_path);
-	set_hostname(*host_and_path, hostname);
-	set_url_filename(url_filename, *host_and_path, *hostname);
+    // * Split url into hostname and url_filename
+    set_host_and_path(url, host_and_path);
+    set_hostname(*host_and_path, hostname);
+    set_url_filename(url_filename, *host_and_path, *hostname);
 
-	// * Make HTTP request
-	// Pass the pointer to the required values, not the double pointers
-	int sd = connect_to_socket(*hostname);
-	send_http_request(sd, *hostname, *url_filename);
-	read_http_response(sd, output_filename);
-	close(sd);
+    // * Make HTTP request
+    // Pass the pointer to the required values, not the double pointers
+    int sd = connect_to_socket(*hostname);
+    send_http_request(sd, *hostname, *url_filename);
+    read_http_response(sd, output_filename);
+    close(sd);
 }
 
 
@@ -439,28 +439,28 @@ void handle_required_args(char *url, char *output_filename, char **host_and_path
  * */
 void handle_f(char *hostname, char *output_filename) 
 {
-	printv("\n========== Handling -f option ==========\n", NULL);
-	// If we get 300 response for redirect
-	// Make a copy of http_headers to use strstr
-	char *http_headers_copy = strdup(http_headers);
-	if (strstr(http_headers_copy, REDIRECT_CODE) == NULL)
-		return;
+    printv("\n========== Handling -f option ==========\n", NULL);
+    // If we get 300 response for redirect
+    // Make a copy of http_headers to use strstr
+    char *http_headers_copy = strdup(http_headers);
+    if (strstr(http_headers_copy, REDIRECT_CODE) == NULL)
+        return;
 
-	// Find new URL: search for "Location: "
-	printv("HERE are the http headers: %s", http_headers);
-	char *location = strstr(http_headers, LOCATION_HEADER);
-	if (location == NULL)
-		errexit("Could not find location header in response", NULL);
-	
-	// Get the new URL
-	char *new_url_filename = location + strlen(LOCATION_HEADER);
-	printv("New URL: %s\n", new_url_filename);
-	
-	// Make request again
-	int sd = connect_to_socket(hostname);
-	send_http_request(sd, hostname, new_url_filename);
-	read_http_response(sd, output_filename);
-	return;
+    // Find new URL: search for "Location: "
+    printv("HERE are the http headers: %s", http_headers);
+    char *location = strstr(http_headers, LOCATION_HEADER);
+    if (location == NULL)
+        errexit("Could not find location header in response", NULL);
+    
+    // Get the new URL
+    char *new_url_filename = location + strlen(LOCATION_HEADER);
+    printv("New URL: %s\n", new_url_filename);
+    
+    // Make request again
+    int sd = connect_to_socket(hostname);
+    send_http_request(sd, hostname, new_url_filename);
+    read_http_response(sd, output_filename);
+    return;
 }
 
 
@@ -469,21 +469,21 @@ void handle_f(char *hostname, char *output_filename)
  * */
 void handle_optional_args(char *hostname, char *url_filename, char *output_filename)
 {
-	if (is_option_i) {
-		handle_i(hostname, url_filename, output_filename);
-	}
+    if (is_option_i) {
+        handle_i(hostname, url_filename, output_filename);
+    }
 
-	if (is_option_c) {
-		handle_c();
-	}
+    if (is_option_c) {
+        handle_c();
+    }
 
-	if (is_option_s) {
-		handle_s();
-	}
+    if (is_option_s) {
+        handle_s();
+    }
 
-	if (is_option_f) {
-		handle_f(hostname, output_filename);
-	}
+    if (is_option_f) {
+        handle_f(hostname, output_filename);
+    }
 }
 
 
@@ -492,13 +492,13 @@ void handle_optional_args(char *hostname, char *url_filename, char *output_filen
  * */
 int main(int argc, char *argv[])
 {
-	char *url, *output_filename;
-	char *host_and_path, *hostname, *url_filename;
+    char *url, *output_filename;
+    char *host_and_path, *hostname, *url_filename;
 
-	parse_args(argc, argv, &url, &output_filename);
-	printv("Starting command-line based web client...\n", NULL);
-	check_required_args();
-	handle_required_args(url, output_filename, &host_and_path, &hostname, &url_filename);
-	handle_optional_args(hostname, url_filename, output_filename);
-	exit(0);
+    parse_args(argc, argv, &url, &output_filename);
+    printv("Starting command-line based web client...\n", NULL);
+    check_required_args();
+    handle_required_args(url, output_filename, &host_and_path, &hostname, &url_filename);
+    handle_optional_args(hostname, url_filename, output_filename);
+    exit(0);
 }
