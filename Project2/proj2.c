@@ -227,7 +227,6 @@ void write_to_file(char *output_filename, char *http_response, FILE *fd)
 
     if (output_file == NULL)
     {
-        fclose(output_file);
         errexit("Failed to open output file!", NULL);
     } 
 
