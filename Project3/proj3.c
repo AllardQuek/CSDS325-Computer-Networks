@@ -139,20 +139,18 @@ void check_required_args()
  * Connects to socket given a hostname.
  * Returns a socket descriptor.
  * */
-int connect_to_socket(char *port)
+int start_listening(char *port)
 {
     struct sockaddr_in sin;
-    struct sockaddr addr;
     struct protoent *protoinfo;
-    unsigned int addrlen;
-    int sd, sd2;
+    int sd;
     
     /* determine protocol */
     if ((protoinfo = getprotobyname (PROTOCOL)) == NULL)
         errexit ("cannot find protocol information for %s", PROTOCOL);
 
     /* setup endpoint info */
-    memset ((char *)&sin,0x0,sizeof (sin));
+    memset ((char *)&sin, 0x0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons((u_short) atoi(port));
@@ -171,10 +169,18 @@ int connect_to_socket(char *port)
         errexit ("cannot listen on port %s\n", port);
 
     printf("Listening for connections...\n");
+    return sd;
+}
 
+
+void accept_connection(int sd) {
+    struct sockaddr addr;
+    unsigned int addrlen;
+    int sd2;
+    
     /* accept a connection */
     addrlen = sizeof(addr);
-    sd2 = accept (sd,&addr,&addrlen);
+    sd2 = accept (sd, &addr, &addrlen);
     if (sd2 < 0)
         errexit ("error accepting connection", NULL);
 
@@ -185,9 +191,7 @@ int connect_to_socket(char *port)
         errexit ("error writing message: %s", "LOOKS GOOD");
 
     /* close connections and exit */
-    close (sd);
-    close (sd2);
-    exit (0);
+    close(sd2);
 }
 
 
@@ -202,9 +206,11 @@ int main(int argc, char *argv[])
     printv("Starting command-line based web client...\n", NULL);
     check_required_args();
     printv("\n========== Handling required options ==========\n", NULL);
-    int sd = connect_to_socket(port);
+    int sd = start_listening(port);
+    while (1)
+    {
+        accept_connection(sd);
+    }
     close(sd);
-    // send_http_request(sd, *hostname, *url_filename);
-    // read_http_response(sd, output_filename);
     exit(0);
 }
