@@ -32,6 +32,7 @@
 #define CRLF "\r\n"
 #define END_OF_HEADER "\r\n\r\n"
 #define SUCCESS_CODE "200"
+#define QLEN 1
 
 // Define option flags
 static bool is_option_p = false;
@@ -138,40 +139,55 @@ void check_required_args()
  * Connects to socket given a hostname.
  * Returns a socket descriptor.
  * */
-int connect_to_socket(char *hostname)
+int connect_to_socket(char *port)
 {
     struct sockaddr_in sin;
-    struct hostent *hinfo;
+    struct sockaddr addr;
     struct protoent *protoinfo;
-    int sd;
+    unsigned int addrlen;
+    int sd, sd2;
+    
+    /* determine protocol */
+    if ((protoinfo = getprotobyname (PROTOCOL)) == NULL)
+        errexit ("cannot find protocol information for %s", PROTOCOL);
 
-    // Lookup the hostname
-    hinfo = gethostbyname(hostname);
-    if (hinfo == NULL)
-        errexit("Cannot find name: %s", hostname);
-
-    // Set endpoint information 
-    memset((char *)&sin, 0x0, sizeof(sin));	
+    /* setup endpoint info */
+    memset ((char *)&sin,0x0,sizeof (sin));
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(HTTP_PORT);
-    memcpy((char *)&sin.sin_addr,hinfo->h_addr,hinfo->h_length);
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons((u_short) atoi(port));
 
-    if ((protoinfo = getprotobyname(PROTOCOL)) == NULL)
-        errexit("Cannot find protocol information for %s!", PROTOCOL);
-
-    // Allocate a socket (would be SOCK_DGRAM for UDP)
+    /* allocate a socket */
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
     if (sd < 0)
-    {
-        errexit("Cannot create socket!\n",NULL);
-    }
+        errexit("cannot create socket", NULL);
 
-    if (connect(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-    {
-        errexit("Cannot connect!", NULL);
-    }
+    /* bind the socket */
+    if (bind (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+        errexit ("cannot bind to port %s", port);
 
-    return sd;
+    /* listen for incoming connections */
+    if (listen (sd, QLEN) < 0)
+        errexit ("cannot listen on port %s\n", port);
+
+    printf("Listening for connections...\n");
+
+    /* accept a connection */
+    addrlen = sizeof(addr);
+    sd2 = accept (sd,&addr,&addrlen);
+    if (sd2 < 0)
+        errexit ("error accepting connection", NULL);
+
+    printf("Accepted connection!\n");
+    
+    /* write message to the connection */
+    if (write (sd2, "LOOKS GOOD", strlen("LOOKS GOOD")) < 0)
+        errexit ("error writing message: %s", "LOOKS GOOD");
+
+    /* close connections and exit */
+    close (sd);
+    close (sd2);
+    exit (0);
 }
 
 
@@ -186,9 +202,9 @@ int main(int argc, char *argv[])
     printv("Starting command-line based web client...\n", NULL);
     check_required_args();
     printv("\n========== Handling required options ==========\n", NULL);
-    // int sd = connect_to_socket(*hostname);
+    int sd = connect_to_socket(port);
+    close(sd);
     // send_http_request(sd, *hostname, *url_filename);
     // read_http_response(sd, output_filename);
-    // close(sd);
     exit(0);
 }
