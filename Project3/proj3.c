@@ -96,6 +96,7 @@ int errexit(char *msg_format, char *arg)
  * */
 int exit_response(char *msg_format)
 {
+    // TODO: Change printing on server to writing to socket instead
     fprintf(stderr, "%s", msg_format);
     exit(ERROR);
 }
@@ -315,9 +316,18 @@ void accept_connection(int sd) {
             exit_response(ERROR_406_MSG);
         }
 
-        // If requested file exists
+        FILE *fp;
+        char *content;
 
-        // If cannot open requested file (e.g. because it does not exist)
+        // 404 error if cannot open requested file (e.g. because it does not exist)
+        if ((fp = fopen(argument, "r")) == NULL){
+            exit_response(ERROR_404_MSG);
+        }
+
+        // If requested file exists
+        fscanf(fp, "%s", &content);
+        printf("Contents: %s", content);
+        fclose(fp); 
     } else 
     {
         exit_response(ERROR_405_MSG);
