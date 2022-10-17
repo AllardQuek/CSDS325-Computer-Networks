@@ -178,13 +178,32 @@ int start_listening(char *port)
     return sd;
 }
 
+void parse_request(char *request, char *method, char *argument, char *http_version)
+{
+    char *token;
+    token = strtok(request, " ");
+    strcpy(method, token);
+    token = strtok(NULL, " ");
+    if (token == NULL) 
+    {
+        errexit("error parsing argument", NULL);
+    }
+    strcpy(argument, token);
+    token = strtok(NULL, " ");
+    if (token == NULL) 
+    {
+        errexit("error parsing http_version", NULL);
+    }
+    strcpy(http_version, token);
+}
+
 
 void accept_connection(int sd) {
     struct sockaddr addr;
     unsigned int addrlen;
     int sd2, bytes_read;
     
-    /* accept a connection */
+    // Accept a connection
     addrlen = sizeof(addr);
     sd2 = accept(sd, &addr, &addrlen);
     if (sd2 < 0)
@@ -192,12 +211,18 @@ void accept_connection(int sd) {
 
     printv("Accepted connection!\n", NULL);
 
-    // * Read the request from the client
+    // Read the request from the client
+    bool have_recevied_request = false;
+    char request[BUFLEN];
     memset(http_request, 0, BUFLEN);
 
     while ((bytes_read = read(sd2, http_request, BUFLEN-1)) > 0) 
     {
         printf("Request: %s\n", http_request);
+        if (!have_recevied_request) {
+            have_recevied_request = true;
+            strcpy(request, http_request);
+        }
 
         // Detect end of HTTP request
         if (http_request[bytes_read - 1] == '\n' && http_request[bytes_read - 2] == '\r') {
@@ -210,15 +235,21 @@ void accept_connection(int sd) {
         errexit("error reading request", NULL);
     }
 
-    printf("Now parse request: %s\n", http_request);
+    printf("Now parse request: %s\n", request);
+    char method[BUFLEN];
+    char argument[BUFLEN];
+    char http_version[BUFLEN];
+    parse_request(request, method, argument, http_version);
+    printf("Method: %s\n", method);
+    printf("Argument: %s\n", argument);
+    printf("HTTP Version: %s\n", http_version);
 
-    // * Send response to the client
-    
-    /* write message to the connection */
+
+    // Write message to the connection 
     if (write(sd2, "LOOKS GOOD\n", strlen("LOOKS GOOD")) < 0)
         errexit ("error writing message: %s", "LOOKS GOOD");
 
-    /* close connections and exit */
+    // Close connections and exit
     close(sd2);
 }
 
