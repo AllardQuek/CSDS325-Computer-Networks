@@ -1,0 +1,21 @@
+Sample 1:
+Commands:
+    eecslab-10% ./proj3 -p 1947 -t foobar -r /home/mxa99/web-stuff
+    eecslab-11% echo -e -n "GET / HTTP/1.1\n\r\n" |nc eecslab-10.case.edu 1947
+  
+Sample 2:
+Commands:
+    eecslab-10% mkdir -p /home/mxa99/doc-root; seq 5 > /home/mxa99/doc-root/5.txt
+    eecslab-10% ./proj3 -p 1947 -t foobar -r /home/mxa99/doc-root
+    eecslab-11% echo -e -n "GET /5.txt HTTP/1.1\r\n\r\n" |nc eecslab-10.case.edu 1947
+  
+Sample 3:
+Commands:
+    eecslab-10% ./proj3 -p 1947 -t foobar -r /home/mxa99/web-stuff
+    eecslab-11% echo -e -n "GET / Http/1.1\r\n\r\n" |nc eecslab-10.case.edu 1947
+  
+Sample 4:
+Commands:
+    eecslab-10% ./proj3 -p 1947 -t foobar -r /home/mxa99/web-stuff
+    eecslab-11% echo -e -n "GETFILE / HTTP/1.1\r\n\r\n" |nc eecslab-10.case.edu 1947
+  
