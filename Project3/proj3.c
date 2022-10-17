@@ -33,6 +33,12 @@
 #define END_OF_HEADER "\r\n\r\n"
 #define SUCCESS_CODE "200"
 #define QLEN 1
+#define ERROR_400_MSG "HTTP /1.1 400 Malformed Request\r\n\r\n"
+#define ERROR_501_MSG "HTTP /1.1 501 Protocol Not Implemented\r\n\r\n"
+#define ERROR_405_MSG "“HTTP/1.1 405 Unsupported Method\r\n\r\n"
+#define SHUTTING_DOWN_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
+#define ERROR_403_MSG "HTTP/1.1 403 Operation Forbidden\r\n\r\n"
+#define ERROR_404_MSG "HTTP/1.1 404 File Not Found\r\n\r\n"
 
 // Define option flags
 static bool is_option_p = false;
@@ -41,7 +47,7 @@ static bool is_option_t = false;
 static bool is_option_v = false;
 
 // Define pointers for required information
-// static char http_request[BUFLEN];
+static char http_request[BUFLEN];
 // static char http_headers[BUFLEN];
 
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
@@ -136,7 +142,7 @@ void check_required_args()
 
 
 /**
- * Connects to socket given a hostname.
+ * Starts listening for connections on a socket.
  * Returns a socket descriptor.
  * */
 int start_listening(char *port)
@@ -176,18 +182,40 @@ int start_listening(char *port)
 void accept_connection(int sd) {
     struct sockaddr addr;
     unsigned int addrlen;
-    int sd2;
+    int sd2, bytes_read;
     
     /* accept a connection */
     addrlen = sizeof(addr);
-    sd2 = accept (sd, &addr, &addrlen);
+    sd2 = accept(sd, &addr, &addrlen);
     if (sd2 < 0)
         errexit ("error accepting connection", NULL);
 
-    printf("Accepted connection!\n");
+    printv("Accepted connection!\n", NULL);
+
+    // * Read the request from the client
+    memset(http_request, 0, BUFLEN);
+
+    while ((bytes_read = read(sd2, http_request, BUFLEN-1)) > 0) 
+    {
+        printf("Request: %s\n", http_request);
+
+        // Detect end of HTTP request
+        if (http_request[bytes_read - 1] == '\n' && http_request[bytes_read - 2] == '\r') {
+            break;
+        }
+        memset(http_request, 0, BUFLEN);
+    }
+    if (bytes_read < 0)
+    {
+        errexit("error reading request", NULL);
+    }
+
+    printf("Now parse request: %s\n", http_request);
+
+    // * Send response to the client
     
     /* write message to the connection */
-    if (write (sd2, "LOOKS GOOD", strlen("LOOKS GOOD")) < 0)
+    if (write(sd2, "LOOKS GOOD\n", strlen("LOOKS GOOD")) < 0)
         errexit ("error writing message: %s", "LOOKS GOOD");
 
     /* close connections and exit */
