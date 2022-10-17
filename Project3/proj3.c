@@ -46,10 +46,6 @@ static bool is_option_r = false;
 static bool is_option_t = false;
 static bool is_option_v = false;
 
-// Define pointers for required information
-static char http_request[BUFLEN];
-// static char http_headers[BUFLEN];
-
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":p:r:t:v";
 
@@ -186,22 +182,31 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     token = strtok(NULL, " ");
     if (token == NULL) 
     {
-        errexit("error parsing argument", NULL);
+        printf("token for argument is null\n");
+        errexit(ERROR_400_MSG, NULL);
     }
     strcpy(argument, token);
     token = strtok(NULL, " ");
     if (token == NULL) 
     {
-        errexit("error parsing http_version", NULL);
+        printf("token for http_version is null\n");
+        errexit(ERROR_400_MSG, NULL);
     }
     strcpy(http_version, token);
+    // Check if http_version ends with \r\n
+    printf("http_version: %s\n", http_version);
+    int len = strlen(http_version);
+    if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
+    {
+        errexit(ERROR_400_MSG, NULL);
+    }
 }
 
 
 void accept_connection(int sd) {
     struct sockaddr addr;
     unsigned int addrlen;
-    int sd2, bytes_read;
+    int sd2;
     
     // Accept a connection
     addrlen = sizeof(addr);
@@ -212,27 +217,35 @@ void accept_connection(int sd) {
     printv("Accepted connection!\n", NULL);
 
     // Read the request from the client
-    bool have_recevied_request = false;
+    // bool have_recevied_request = false;
     char request[BUFLEN];
+    char http_request[BUFLEN];
+    bool has_read_request = false;
     memset(http_request, 0, BUFLEN);
 
-    while ((bytes_read = read(sd2, http_request, BUFLEN-1)) > 0) 
-    {
-        printf("Request: %s\n", http_request);
-        if (!have_recevied_request) {
-            have_recevied_request = true;
+    // Associate socket stream to a file pointer so we can use fetgs() to read the socket
+    FILE *fd;
+    if ((fd = fdopen(sd2, "r")) == NULL) {
+        errexit("Failed to open file pointer for socket!", NULL);
+    }
+
+    for (;;) {
+        // BUFLEN just needs to be big enough for current line
+        if (fgets(http_request, BUFLEN, fd) == NULL) {
+            errexit("Could not get HTTP response!", NULL);
+        }
+        printf("http_request: %s", http_request);
+
+        // Build header string with current header line
+        if (!has_read_request) {
             strcpy(request, http_request);
+            has_read_request = true;
         }
 
-        // Detect end of HTTP request
-        if (http_request[bytes_read - 1] == '\n' && http_request[bytes_read - 2] == '\r') {
+        if (strcmp(http_request, CRLF) == 0) {
+            printf("Reached end of request!\n", NULL);
             break;
         }
-        memset(http_request, 0, BUFLEN);
-    }
-    if (bytes_read < 0)
-    {
-        errexit("error reading request", NULL);
     }
 
     printf("Now parse request: %s\n", request);
