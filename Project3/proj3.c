@@ -53,9 +53,9 @@ static const char *OPT_STRING = ":p:r:t:v";
 void usage(char *progname)
 {
     fprintf(stderr, "%s -p port -r document_directory -t authentication_token\n", progname);
-    fprintf(stderr, "   -p <port>                 Port number on which the server should listen for incoming conncetions from web clients.\n");
-    fprintf(stderr, "   -r <document_diretory>    Root directory from which files will be serverd.\n");
-    fprintf(stderr, "   -t <auth_token>           Authentication token that the new HTTP TERMINATE method will use.\n");
+    fprintf(stderr, "   -p <port>                 Port number on which the server should listen for incoming conncetions from web clients\n");
+    fprintf(stderr, "   -r <document_diretory>    Root directory from which files will be served\n");
+    fprintf(stderr, "   -t <auth_token>           Authentication token that the new HTTP TERMINATE method will use\n");
     fprintf(stderr, "   -v                        Print debug info\n");
     exit(1);
 }
@@ -174,34 +174,6 @@ int connect_to_socket(char *hostname)
     return sd;
 }
 
-/**
- * Handles required arguments -u and -o.
- * */
-void handle_required_args(char *url, char *output_filename, char **host_and_path, char **hostname, char **url_filename)
-{
-    printv("\n========== Handling required options ==========\n", NULL);
-    int sd = connect_to_socket(*hostname);
-    // send_http_request(sd, *hostname, *url_filename);
-    // read_http_response(sd, output_filename);
-    close(sd);
-}
-
-
-/**
- * Handles optional arguments in specified order; simply to print output.
- * */
-void handle_optional_args(char *hostname, char *url_filename, char *output_filename)
-{
-    if (is_option_p) {
-    }
-
-    if (is_option_r) {
-    }
-
-    if (is_option_t) {
-    }
-}
-
 
 /**
  * Main entry point of program.
@@ -213,6 +185,10 @@ int main(int argc, char *argv[])
     parse_args(argc, argv, &port, &document_directory, &auth_token);
     printv("Starting command-line based web client...\n", NULL);
     check_required_args();
-    // handle_required_args(url, output_filename, &host_and_path, &hostname, &url_filename);
+    printv("\n========== Handling required options ==========\n", NULL);
+    // int sd = connect_to_socket(*hostname);
+    // send_http_request(sd, *hostname, *url_filename);
+    // read_http_response(sd, output_filename);
+    // close(sd);
     exit(0);
 }
