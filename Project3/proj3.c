@@ -36,7 +36,7 @@
 #define ERROR_400_MSG "HTTP/1.1 400 Malformed Request\r\n\r\n"
 #define ERROR_501_MSG "HTTP/1.1 501 Protocol Not Implemented\r\n\r\n"
 #define ERROR_405_MSG "HTTP/1.1 405 Unsupported Method\r\n\r\n"
-#define SHUTTING_DOWN_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
+#define TERMINATING_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
 #define ERROR_403_MSG "HTTP/1.1 403 Operation Forbidden\r\n\r\n"
 #define ERROR_404_MSG "HTTP/1.1 404 File Not Found\r\n\r\n"
 
@@ -45,6 +45,9 @@ static bool is_option_p = false;
 static bool is_option_r = false;
 static bool is_option_t = false;
 static bool is_option_v = false;
+
+// Define key variables
+char *PORT, *DOC_DIR, *AUTH_TOKEN;
 
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":p:r:t:v";
@@ -82,6 +85,15 @@ int errexit(char *msg_format, char *arg)
     fprintf(stderr, ERROR_PREFIX);
     fprintf(stderr, msg_format, arg);
     fprintf(stderr, "\n");
+    exit(ERROR);
+}
+
+/**
+ * Prints exit response message and exits the program.
+ * */
+int exit_response(char *msg_format)
+{
+    fprintf(stderr, "%s", msg_format);
     exit(ERROR);
 }
 
@@ -174,6 +186,10 @@ int start_listening(char *port)
     return sd;
 }
 
+
+/**
+ * Checks whether a given string starts with the given prefix.
+*/
 bool starts_with(const char *str, const char *prefix)
 {
    if (strncmp(str, prefix, strlen(prefix)) == 0) return 1;
@@ -181,6 +197,9 @@ bool starts_with(const char *str, const char *prefix)
 }
 
 
+/**
+ * Parses the HTTP request.
+*/
 void parse_request(char *request, char *method, char *argument, char *http_version)
 {
     char *token;
@@ -190,7 +209,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     strcpy(method, token);
     if (strcmp(method, "GET") != 0 && strcmp(method, "TERMINATE") != 0) 
     {
-        errexit(ERROR_405_MSG, NULL);
+        exit_response(ERROR_405_MSG);
     }
 
     // 2. Parse argument
@@ -198,7 +217,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for argument is null\n");
-        errexit(ERROR_400_MSG, NULL);
+        exit_response(ERROR_400_MSG);
     }
     strcpy(argument, token);
 
@@ -207,7 +226,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for http_version is null\n");
-        errexit(ERROR_400_MSG, NULL);
+        exit_response(ERROR_400_MSG);
     }
     strcpy(http_version, token);
 
@@ -215,13 +234,13 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     int len = strlen(http_version);
     if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
     {
-        errexit(ERROR_400_MSG, NULL);
+        exit_response(ERROR_400_MSG);
     }
 
     // Check if HTTP/ portion is present in http_version
     if (!starts_with(http_version, "HTTP/"))
     {
-        errexit(ERROR_501_MSG, NULL);
+        exit_response(ERROR_501_MSG);
     }
 }
 
@@ -279,6 +298,21 @@ void accept_connection(int sd) {
     printf("Argument: %s\n", argument);
     printf("HTTP Version: %s\n", http_version);
 
+    // Method is either TERMINATE or GET
+    if (strcmp(method, "TERMINATE") == 0) 
+    {
+        if (strcmp(argument, AUTH_TOKEN) != 0) 
+        {
+            exit_response(ERROR_403_MSG);
+        } else 
+        {
+            exit_response(TERMINATING_MSG);
+        }
+    } else if (strcmp(method, "GET") == 0) 
+    {
+        printf("Received GET request!\n");
+    }
+    
 
     // Write message to the connection 
     if (write(sd2, "LOOKS GOOD\n", strlen("LOOKS GOOD")) < 0)
@@ -294,13 +328,11 @@ void accept_connection(int sd) {
  * */
 int main(int argc, char *argv[])
 {
-    char *port, *document_directory, *auth_token;
-
-    parse_args(argc, argv, &port, &document_directory, &auth_token);
+    parse_args(argc, argv, &PORT, &DOC_DIR, &AUTH_TOKEN);
     printv("Starting command-line based web client...\n", NULL);
     check_required_args();
     printv("\n========== Handling required options ==========\n", NULL);
-    int sd = start_listening(port);
+    int sd = start_listening(PORT);
     while (1)
     {
         accept_connection(sd);
