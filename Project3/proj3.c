@@ -33,12 +33,15 @@
 #define END_OF_HEADER "\r\n\r\n"
 #define SUCCESS_CODE "200"
 #define QLEN 1
+#define OK_200_MSG "HTTP/1.1 200 OK\r\n\r\n"
+#define TERMINATE_200_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
 #define ERROR_400_MSG "HTTP/1.1 400 Malformed Request\r\n\r\n"
-#define ERROR_501_MSG "HTTP/1.1 501 Protocol Not Implemented\r\n\r\n"
-#define ERROR_405_MSG "HTTP/1.1 405 Unsupported Method\r\n\r\n"
-#define TERMINATING_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
 #define ERROR_403_MSG "HTTP/1.1 403 Operation Forbidden\r\n\r\n"
 #define ERROR_404_MSG "HTTP/1.1 404 File Not Found\r\n\r\n"
+#define ERROR_405_MSG "HTTP/1.1 405 Unsupported Method\r\n\r\n"
+#define ERROR_406_MSG "HTTP/1.1 406 Invalid Filename\r\n\r\n"
+#define ERROR_501_MSG "HTTP/1.1 501 Protocol Not Implemented\r\n\r\n"
+#define DEFAULT_FILENAME "homepage.html"
 
 // Define option flags
 static bool is_option_p = false;
@@ -207,10 +210,6 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     // 1. Parse method
     token = strtok(request, " ");
     strcpy(method, token);
-    if (strcmp(method, "GET") != 0 && strcmp(method, "TERMINATE") != 0) 
-    {
-        exit_response(ERROR_405_MSG);
-    }
 
     // 2. Parse argument
     token = strtok(NULL, " ");
@@ -306,11 +305,22 @@ void accept_connection(int sd) {
             exit_response(ERROR_403_MSG);
         } else 
         {
-            exit_response(TERMINATING_MSG);
+            exit_response(TERMINATE_200_MSG);
         }
     } else if (strcmp(method, "GET") == 0) 
     {
         printf("Received GET request!\n");
+        if (!starts_with(argument, "/")) 
+        {
+            exit_response(ERROR_406_MSG);
+        }
+
+        // If requested file exists
+
+        // If cannot open requested file (e.g. because it does not exist)
+    } else 
+    {
+        exit_response(ERROR_405_MSG);
     }
     
 
