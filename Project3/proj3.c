@@ -321,24 +321,33 @@ void accept_connection(int sd) {
 
         FILE *fp;
         char *content = malloc(BUFLEN);
+        char filepath[BUFLEN];
 
         // If argument is "/" set argument to the default filename
         if (strcmp(argument, "/") == 0) 
         {
-            // strcpy(argument, DEFAULT_FILENAME);
-            strcpy(DOC_DIR, DEFAULT_FILENAME);
+            strcpy(filepath, DEFAULT_FILENAME);
         } 
 
         // Concat argument with DOC_DIR
-        strcat(DOC_DIR, argument);
+        strcpy(filepath, DOC_DIR);
+        strcat(filepath, argument);
+        printf("Filepath is %s\n", filepath);
 
         // 404 error if cannot open requested file (e.g. because it does not exist)
-        if ((fp = fopen(DOC_DIR, "r")) == NULL){
+        if ((fp = fopen(filepath, "r")) == NULL){
             exit_response(ERROR_404_MSG, sd2);
         }
 
         // Read contents from file if it exists
         char *s = fgets(content, BUFLEN, fp);
+        if (s != NULL)
+        {
+            if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
+            {
+                errexit("error writing message!", NULL);
+            }
+        }
         while (s != NULL) 
         {
             printf("content: %s", content);
