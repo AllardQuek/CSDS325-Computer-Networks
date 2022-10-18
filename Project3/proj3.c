@@ -24,14 +24,11 @@
 
 // Define constant macros (from sample code)
 #define ERROR 1
-#define HTTP_PORT 80
 #define PROTOCOL "tcp"
-#define BUFLEN 1024
+#define BUFLEN 512
 #define ERROR_PREFIX "ERROR: "
-#define PATH_DELIMITER "/"
 #define CRLF "\r\n"
 #define END_OF_HEADER "\r\n\r\n"
-#define SUCCESS_CODE "200"
 #define QLEN 1
 #define OK_200_MSG "HTTP/1.1 200 OK\r\n\r\n"
 #define TERMINATE_200_MSG "HTTP/1.1 200 Server Shutting Down\r\n\r\n"
@@ -48,12 +45,9 @@ static bool is_option_r = false;
 static bool is_option_t = false;
 static bool is_option_v = false;
 
-// Define key variables
-char *PORT, *DOC_DIR, *AUTH_TOKEN;
-const char *DEFAULT_FILENAME = "homepage.html";
-
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":p:r:t:v";
+const char *DEFAULT_FILENAME = "/homepage.html";
 
 
 /**
@@ -188,11 +182,11 @@ int start_listening(char *port)
         errexit("cannot create socket", NULL);
 
     // Bind the socket 
-    if (bind (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
+    if (bind(sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
         errexit("cannot bind to port %s", port);
 
     // Listen for incoming connections
-    if (listen (sd, QLEN) < 0)
+    if (listen(sd, QLEN) < 0)
         errexit("cannot listen on port %s\n", port);
 
     printf("Listening for connections...\n");
@@ -213,8 +207,9 @@ bool starts_with(const char *str, const char *prefix)
 /**
  * Parses the HTTP request.
 */
-void parse_request(char *request, char *method, char *argument, char *http_version, int sd2)
+void parse_request(int sd2, char *request, char *method, char *argument, char *http_version)
 {
+    printf("Parsing request: %s\n", request);
     char *token;
 
     // 1. Parse method
@@ -225,7 +220,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     token = strtok(NULL, " ");
     if (token == NULL) 
     {
-        printf("token for argument is null\n");
+        printv("token for argument is null\n", NULL);
         write_and_exit(ERROR_400_MSG, sd2);
     }
     strcpy(argument, token);
@@ -234,7 +229,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     token = strtok(NULL, " ");
     if (token == NULL) 
     {
-        printf("token for http_version is null\n");
+        printv("token for http_version is null\n", NULL);
         write_and_exit(ERROR_400_MSG, sd2);
     }
     strcpy(http_version, token);
@@ -254,7 +249,11 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
 }
 
 
-void accept_connection(int sd) {
+
+/**
+* Returns a socket desciptor after accepting a connection from a client.
+*/
+int accept_connection(int sd) {
     struct sockaddr addr;
     unsigned int addrlen;
     int sd2;
@@ -266,9 +265,16 @@ void accept_connection(int sd) {
         errexit ("error accepting connection", NULL);
 
     printv("Accepted connection!\n", NULL);
+    return sd2;
+}
 
-    // Read the request from the client
-    char request[BUFLEN];
+
+
+/**
+* Reads the HTTP request sent by the client.
+*/
+void read_http_request(int sd2, char *request)
+{
     char http_request[BUFLEN];
     bool has_read_request = false;
     memset(http_request, 0, BUFLEN);
@@ -280,12 +286,10 @@ void accept_connection(int sd) {
     }
 
     for (;;) {
-        // BUFLEN just needs to be big enough for current line
         if (fgets(http_request, BUFLEN, fd) == NULL) {
             errexit("Could not get HTTP response!", NULL);
         }
 
-        // Build header string with current header line
         if (!has_read_request) {
             strcpy(request, http_request);
             has_read_request = true;
@@ -296,84 +300,104 @@ void accept_connection(int sd) {
             break;
         }
     }
+}
 
-    printf("Parsing request: %s\n", request);
-    char method[BUFLEN];
-    char argument[BUFLEN];
-    char http_version[BUFLEN];
-    parse_request(request, method, argument, http_version, sd2);
 
-    // Method is either TERMINATE or GET
-    if (strcmp(method, "TERMINATE") == 0) 
+/**
+* Handles TERMINATE requests.
+*/
+void handle_terminate(int sd2, char *argument, char *AUTH_TOKEN)
+{
+    printv("Handling TERMINATE request...\n", NULL);
+    if (strcmp(argument, AUTH_TOKEN) != 0) 
     {
-        printv("Handling TERMINATE request...\n", NULL);
-        if (strcmp(argument, AUTH_TOKEN) != 0) 
-        {
-            write_and_exit(ERROR_403_MSG, sd2);
-        } else 
-        {
-            write_to_socket(TERMINATE_200_MSG, sd2);
-        }
-    } else if (strcmp(method, "GET") == 0) 
+        write_to_socket(ERROR_403_MSG, sd2);
+    } 
+    else 
     {
-        printv("Handling GET request...\n", NULL);
-        if (!starts_with(argument, "/")) 
-        {
-            write_and_exit(ERROR_406_MSG, sd2);
-        }
+        write_and_exit(TERMINATE_200_MSG, sd2);
+    }
+}
 
-        FILE *fp;
-        char *content = malloc(BUFLEN);
-        char filepath[BUFLEN];
 
-        // If argument is "/" set argument to the default filename
-        if (strcmp(argument, "/") == 0) 
-        {
-            strcpy(filepath, DEFAULT_FILENAME);
-        } 
+/**
+* Handles GET requests.
+*/
+void handle_get(int sd2, char *argument, char *DOC_DIR)
+{
+    printv("Handling GET request...\n", NULL);
+    if (!starts_with(argument, "/")) 
+    {
+        write_and_exit(ERROR_406_MSG, sd2);
+    }
 
-        // Concat argument with DOC_DIR
-        strcpy(filepath, DOC_DIR);
+    FILE *fp;
+    char *content = malloc(BUFLEN);
+    char filepath[BUFLEN];
+    strcpy(filepath, DOC_DIR);
+
+    // If argument is "/" set argument to the default filename
+    if (strcmp(argument, "/") == 0) 
+    {
+        strcat(filepath, DEFAULT_FILENAME);
+    } 
+    else 
+    {
         strcat(filepath, argument);
-        printf("Filepath is %s\n", filepath);
+    }
+    printf("Filepath: %s\n", filepath);
 
-        // 404 error if cannot open requested file (e.g. because it does not exist)
-        if ((fp = fopen(filepath, "r")) == NULL)
+    // 404 error if cannot open requested file (e.g. because it does not exist)
+    if ((fp = fopen(filepath, "r")) == NULL)
+    {
+        write_and_exit(ERROR_404_MSG, sd2);
+    }
+
+    int byte_size = 1;
+    int bytes_read;
+    bool has_written_success = false;
+
+    // Read file contents 
+    while ((bytes_read = fread(content, byte_size, sizeof(content), fp)) > 0) 
+    {
+        // Write success message
+        if (!has_written_success)
         {
-            write_and_exit(ERROR_404_MSG, sd2);
-        }
-
-        int byte_size = 1;
-        int bytes_read;
-        bool has_written_success = false;
-
-        // Read and write contents from file
-        while ((bytes_read = fread(content, byte_size, sizeof(content), fp)) > 0) 
-        {
-            // Write success message
-            if (!has_written_success)
-            {
-                if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
-                {
-                    errexit("error writing message!", NULL);
-                }
-                has_written_success = true;
-            }
-
-            if (write(sd2, content, bytes_read) < 0)
+            if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
             {
                 errexit("error writing message!", NULL);
             }
+            has_written_success = true;
         }
-        free(content);
-        fclose(fp); 
-    } else 
+
+        // Write file contents
+        if (write(sd2, content, bytes_read) < 0)
+        {
+            errexit("error writing message!", NULL);
+        }
+    }
+    free(content);
+    fclose(fp); 
+}
+
+
+/**
+* Processes the HTTP request. Only need to handle TERMINATE and GET.
+*/
+void process_request(int sd2, char *request, char *method, char *argument, char *DOC_DIR, char *AUTH_TOKEN) 
+{
+    if (strcmp(method, "TERMINATE") == 0) 
+    {
+        handle_terminate(sd2, argument, AUTH_TOKEN);
+    } 
+    else if (strcmp(method, "GET") == 0) 
+    {
+        handle_get(sd2, argument, DOC_DIR);
+    } 
+    else 
     {
         write_and_exit(ERROR_405_MSG, sd2);
     }
-
-    // Close connections and exit
-    close(sd2);
 }
 
 
@@ -382,17 +406,26 @@ void accept_connection(int sd) {
  * */
 int main(int argc, char *argv[])
 {
+    char *PORT, *DOC_DIR, *AUTH_TOKEN;
+    char request[BUFLEN];
+    char method[BUFLEN];
+    char argument[BUFLEN];
+    char http_version[BUFLEN];
     printv("Starting command-line based web client...\n", NULL);
     parse_args(argc, argv, &PORT, &DOC_DIR, &AUTH_TOKEN);
     check_required_args();
-
     printf("Port: %s\n", PORT);
     printf("Document Directory: %s\n", DOC_DIR);
     printf("Auth Token: %s\n", AUTH_TOKEN);
+
     int sd = start_listening(PORT);
     while (1)
     {
-        accept_connection(sd);
+        int sd2 = accept_connection(sd);
+        read_http_request(sd2, request);
+        parse_request(sd2, request, method, argument, http_version);
+        process_request(sd2, request, method, argument, DOC_DIR, AUTH_TOKEN);
+        close(sd2);
     }
     close(sd);
     exit(0);
