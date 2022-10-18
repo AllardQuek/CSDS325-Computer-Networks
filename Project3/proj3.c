@@ -91,16 +91,25 @@ int errexit(char *msg_format, char *arg)
     exit(ERROR);
 }
 
+
 /**
- * Writes exit response message and exits the program.
- * */
-int exit_response(char *msg_format, int sd)
+* Writes message to socket.
+*/
+void write_to_socket(char *msg_format, int sd)
 {
-    // fprintf(stderr, "%s", msg_format);
     if (write(sd, msg_format, strlen(msg_format)) < 0)
     {
-        errexit ("error writing message: %s", msg_format);
+        errexit("error writing message: %s", msg_format);
     }
+}
+
+
+/**
+ * Writes message to socket and exits the program.
+ * */
+int write_and_exit(char *msg_format, int sd)
+{
+    write_to_socket(msg_format, sd);
     exit(ERROR);
 }
 
@@ -118,17 +127,14 @@ void parse_args(int argc, char *argv [], char **port, char **document_directory,
         {
             case 'p':
                 *port = optarg;
-                printf("port: %s\n", *port);
                 is_option_p = true;
                 break;
             case 'r':
                 *document_directory = optarg;
-                printf("document_directory: %s\n", *document_directory);
                 is_option_r = true;
                 break;
             case 't':
                 *auth_token = optarg;
-                printf("auth_token: %s\n", *auth_token);
                 is_option_t = true;
                 break;
             case 'v':
@@ -166,28 +172,28 @@ int start_listening(char *port)
     struct protoent *protoinfo;
     int sd;
     
-    /* determine protocol */
+    // Determine protocol
     if ((protoinfo = getprotobyname (PROTOCOL)) == NULL)
         errexit ("cannot find protocol information for %s", PROTOCOL);
 
-    /* setup endpoint info */
+    // Setup endpoint info
     memset ((char *)&sin, 0x0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons((u_short) atoi(port));
 
-    /* allocate a socket */
+    // Allocate a socket
     sd = socket(PF_INET, SOCK_STREAM, protoinfo->p_proto);
     if (sd < 0)
         errexit("cannot create socket", NULL);
 
-    /* bind the socket */
+    // Bind the socket 
     if (bind (sd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-        errexit ("cannot bind to port %s", port);
+        errexit("cannot bind to port %s", port);
 
-    /* listen for incoming connections */
+    // Listen for incoming connections
     if (listen (sd, QLEN) < 0)
-        errexit ("cannot listen on port %s\n", port);
+        errexit("cannot listen on port %s\n", port);
 
     printf("Listening for connections...\n");
     return sd;
@@ -220,7 +226,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for argument is null\n");
-        exit_response(ERROR_400_MSG, sd2);
+        write_and_exit(ERROR_400_MSG, sd2);
     }
     strcpy(argument, token);
 
@@ -229,7 +235,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for http_version is null\n");
-        exit_response(ERROR_400_MSG, sd2);
+        write_and_exit(ERROR_400_MSG, sd2);
     }
     strcpy(http_version, token);
 
@@ -237,13 +243,13 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     int len = strlen(http_version);
     if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
     {
-        exit_response(ERROR_400_MSG, sd2);
+        write_and_exit(ERROR_400_MSG, sd2);
     }
 
     // Check if HTTP/ portion is present in http_version
     if (!starts_with(http_version, "HTTP/"))
     {
-        exit_response(ERROR_501_MSG, sd2);
+        write_and_exit(ERROR_501_MSG, sd2);
     }
 }
 
@@ -278,7 +284,6 @@ void accept_connection(int sd) {
         if (fgets(http_request, BUFLEN, fd) == NULL) {
             errexit("Could not get HTTP response!", NULL);
         }
-        printf("http_request: %s", http_request);
 
         // Build header string with current header line
         if (!has_read_request) {
@@ -287,36 +292,34 @@ void accept_connection(int sd) {
         }
 
         if (strcmp(http_request, CRLF) == 0) {
-            printf("Reached end of request!\n");
+            printv("Reached end of request!\n", NULL);
             break;
         }
     }
 
-    printf("Now parse request: %s\n", request);
+    printf("Parsing request: %s\n", request);
     char method[BUFLEN];
     char argument[BUFLEN];
     char http_version[BUFLEN];
     parse_request(request, method, argument, http_version, sd2);
-    printf("Method: %s\n", method);
-    printf("Argument: %s\n", argument);
-    printf("HTTP Version: %s\n", http_version);
 
     // Method is either TERMINATE or GET
     if (strcmp(method, "TERMINATE") == 0) 
     {
+        printv("Handling TERMINATE request...\n", NULL);
         if (strcmp(argument, AUTH_TOKEN) != 0) 
         {
-            exit_response(ERROR_403_MSG, sd2);
+            write_and_exit(ERROR_403_MSG, sd2);
         } else 
         {
-            exit_response(TERMINATE_200_MSG, sd2);
+            write_to_socket(TERMINATE_200_MSG, sd2);
         }
     } else if (strcmp(method, "GET") == 0) 
     {
-        printf("Received GET request!\n");
+        printv("Handling GET request...\n", NULL);
         if (!starts_with(argument, "/")) 
         {
-            exit_response(ERROR_406_MSG, sd2);
+            write_and_exit(ERROR_406_MSG, sd2);
         }
 
         FILE *fp;
@@ -337,7 +340,7 @@ void accept_connection(int sd) {
         // 404 error if cannot open requested file (e.g. because it does not exist)
         if ((fp = fopen(filepath, "r")) == NULL)
         {
-            exit_response(ERROR_404_MSG, sd2);
+            write_and_exit(ERROR_404_MSG, sd2);
         }
 
         int byte_size = 1;
@@ -366,7 +369,7 @@ void accept_connection(int sd) {
         fclose(fp); 
     } else 
     {
-        exit_response(ERROR_405_MSG, sd2);
+        write_and_exit(ERROR_405_MSG, sd2);
     }
 
     // Close connections and exit
@@ -379,10 +382,13 @@ void accept_connection(int sd) {
  * */
 int main(int argc, char *argv[])
 {
-    parse_args(argc, argv, &PORT, &DOC_DIR, &AUTH_TOKEN);
     printv("Starting command-line based web client...\n", NULL);
+    parse_args(argc, argv, &PORT, &DOC_DIR, &AUTH_TOKEN);
     check_required_args();
-    printv("\n========== Handling required options ==========\n", NULL);
+
+    printf("Port: %s\n", PORT);
+    printf("Document Directory: %s\n", DOC_DIR);
+    printf("Auth Token: %s\n", AUTH_TOKEN);
     int sd = start_listening(PORT);
     while (1)
     {
