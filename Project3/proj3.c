@@ -237,7 +237,6 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     int len = strlen(http_version);
     if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
     {
-        printf("http_version does not end with CRLF");
         exit_response(ERROR_400_MSG, sd2);
     }
 
@@ -288,7 +287,7 @@ void accept_connection(int sd) {
         }
 
         if (strcmp(http_request, CRLF) == 0) {
-            printf("Reached end of request!\n", NULL);
+            printf("Reached end of request!\n");
             break;
         }
     }
@@ -326,11 +325,15 @@ void accept_connection(int sd) {
         // If argument is "/" set argument to the default filename
         if (strcmp(argument, "/") == 0) 
         {
-            strcpy(argument, DEFAULT_FILENAME);
+            // strcpy(argument, DEFAULT_FILENAME);
+            strcpy(DOC_DIR, DEFAULT_FILENAME);
         } 
 
+        // Concat argument with DOC_DIR
+        strcat(DOC_DIR, argument);
+
         // 404 error if cannot open requested file (e.g. because it does not exist)
-        if ((fp = fopen(argument, "r")) == NULL){
+        if ((fp = fopen(DOC_DIR, "r")) == NULL){
             exit_response(ERROR_404_MSG, sd2);
         }
 
