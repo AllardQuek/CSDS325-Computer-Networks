@@ -335,29 +335,33 @@ void accept_connection(int sd) {
         printf("Filepath is %s\n", filepath);
 
         // 404 error if cannot open requested file (e.g. because it does not exist)
-        if ((fp = fopen(filepath, "r")) == NULL){
+        if ((fp = fopen(filepath, "r")) == NULL)
+        {
             exit_response(ERROR_404_MSG, sd2);
         }
 
-        // Read contents from file if it exists
-        char *s = fgets(content, BUFLEN, fp);
-        if (s != NULL)
-        {
-            if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
-            {
-                errexit("error writing message!", NULL);
-            }
-        }
-        while (s != NULL) 
-        {
-            printf("content: %s", content);
-            if (write(sd2, content, strlen(content)) < 0)
-            {
-                errexit("error writing message!", NULL);
-            }
-            s = fgets(content, BUFLEN, fp);
-        }
+        int byte_size = 1;
+        int bytes_read;
+        bool has_written_success = false;
 
+        // Read and write contents from file
+        while ((bytes_read = fread(content, byte_size, sizeof(content), fp)) > 0) 
+        {
+            // Write success message
+            if (!has_written_success)
+            {
+                if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
+                {
+                    errexit("error writing message!", NULL);
+                }
+                has_written_success = true;
+            }
+
+            if (write(sd2, content, bytes_read) < 0)
+            {
+                errexit("error writing message!", NULL);
+            }
+        }
         free(content);
         fclose(fp); 
     } else 
