@@ -346,12 +346,11 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
         // Write success message
         if (!has_written_success)
         {
-            if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
-                errexit("error writing message!", NULL);
+            write_to_socket(OK_200_MSG, sd2);
             has_written_success = true;
         }
 
-        // Write file contents
+        // Write file contents (we only write as many bytes as we read, NOT the length of content!)
         if (write(sd2, content, bytes_read) < 0)
             errexit("error writing message!", NULL);
     }
