@@ -41,7 +41,6 @@
 #define ERROR_405_MSG "HTTP/1.1 405 Unsupported Method\r\n\r\n"
 #define ERROR_406_MSG "HTTP/1.1 406 Invalid Filename\r\n\r\n"
 #define ERROR_501_MSG "HTTP/1.1 501 Protocol Not Implemented\r\n\r\n"
-#define DEFAULT_FILENAME "homepage.html"
 
 // Define option flags
 static bool is_option_p = false;
@@ -51,6 +50,7 @@ static bool is_option_v = false;
 
 // Define key variables
 char *PORT, *DOC_DIR, *AUTH_TOKEN;
+const char *DEFAULT_FILENAME = "homepage.html";
 
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = ":p:r:t:v";
@@ -92,12 +92,15 @@ int errexit(char *msg_format, char *arg)
 }
 
 /**
- * Prints exit response message and exits the program.
+ * Writes exit response message and exits the program.
  * */
-int exit_response(char *msg_format)
+int exit_response(char *msg_format, int sd)
 {
-    // TODO: Change printing on server to writing to socket instead
-    fprintf(stderr, "%s", msg_format);
+    // fprintf(stderr, "%s", msg_format);
+    if (write(sd, msg_format, strlen(msg_format)) < 0)
+    {
+        errexit ("error writing message: %s", msg_format);
+    }
     exit(ERROR);
 }
 
@@ -204,7 +207,7 @@ bool starts_with(const char *str, const char *prefix)
 /**
  * Parses the HTTP request.
 */
-void parse_request(char *request, char *method, char *argument, char *http_version)
+void parse_request(char *request, char *method, char *argument, char *http_version, int sd2)
 {
     char *token;
 
@@ -217,7 +220,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for argument is null\n");
-        exit_response(ERROR_400_MSG);
+        exit_response(ERROR_400_MSG, sd2);
     }
     strcpy(argument, token);
 
@@ -226,7 +229,7 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     if (token == NULL) 
     {
         printf("token for http_version is null\n");
-        exit_response(ERROR_400_MSG);
+        exit_response(ERROR_400_MSG, sd2);
     }
     strcpy(http_version, token);
 
@@ -234,13 +237,14 @@ void parse_request(char *request, char *method, char *argument, char *http_versi
     int len = strlen(http_version);
     if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
     {
-        exit_response(ERROR_400_MSG);
+        printf("http_version does not end with CRLF");
+        exit_response(ERROR_400_MSG, sd2);
     }
 
     // Check if HTTP/ portion is present in http_version
     if (!starts_with(http_version, "HTTP/"))
     {
-        exit_response(ERROR_501_MSG);
+        exit_response(ERROR_501_MSG, sd2);
     }
 }
 
@@ -293,7 +297,7 @@ void accept_connection(int sd) {
     char method[BUFLEN];
     char argument[BUFLEN];
     char http_version[BUFLEN];
-    parse_request(request, method, argument, http_version);
+    parse_request(request, method, argument, http_version, sd2);
     printf("Method: %s\n", method);
     printf("Argument: %s\n", argument);
     printf("HTTP Version: %s\n", http_version);
@@ -303,40 +307,51 @@ void accept_connection(int sd) {
     {
         if (strcmp(argument, AUTH_TOKEN) != 0) 
         {
-            exit_response(ERROR_403_MSG);
+            exit_response(ERROR_403_MSG, sd2);
         } else 
         {
-            exit_response(TERMINATE_200_MSG);
+            exit_response(TERMINATE_200_MSG, sd2);
         }
     } else if (strcmp(method, "GET") == 0) 
     {
         printf("Received GET request!\n");
         if (!starts_with(argument, "/")) 
         {
-            exit_response(ERROR_406_MSG);
+            exit_response(ERROR_406_MSG, sd2);
         }
 
         FILE *fp;
-        char *content;
+        char *content = malloc(BUFLEN);
+
+        // If argument is "/" set argument to the default filename
+        if (strcmp(argument, "/") == 0) 
+        {
+            strcpy(argument, DEFAULT_FILENAME);
+        } 
 
         // 404 error if cannot open requested file (e.g. because it does not exist)
         if ((fp = fopen(argument, "r")) == NULL){
-            exit_response(ERROR_404_MSG);
+            exit_response(ERROR_404_MSG, sd2);
         }
 
-        // If requested file exists
-        fscanf(fp, "%s", &content);
-        printf("Contents: %s", content);
+        // Read contents from file if it exists
+        char *s = fgets(content, BUFLEN, fp);
+        while (s != NULL) 
+        {
+            printf("content: %s", content);
+            if (write(sd2, content, strlen(content)) < 0)
+            {
+                errexit("error writing message!", NULL);
+            }
+            s = fgets(content, BUFLEN, fp);
+        }
+
+        free(content);
         fclose(fp); 
     } else 
     {
-        exit_response(ERROR_405_MSG);
+        exit_response(ERROR_405_MSG, sd2);
     }
-    
-
-    // Write message to the connection 
-    if (write(sd2, "LOOKS GOOD\n", strlen("LOOKS GOOD")) < 0)
-        errexit ("error writing message: %s", "LOOKS GOOD");
 
     // Close connections and exit
     close(sd2);
