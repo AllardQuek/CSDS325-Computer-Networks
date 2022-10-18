@@ -92,9 +92,7 @@ int errexit(char *msg_format, char *arg)
 void write_to_socket(char *msg_format, int sd)
 {
     if (write(sd, msg_format, strlen(msg_format)) < 0)
-    {
         errexit("error writing message: %s", msg_format);
-    }
 }
 
 
@@ -237,15 +235,11 @@ void parse_request(int sd2, char *request, char *method, char *argument, char *h
     // Check if http_version ends with \r\n
     int len = strlen(http_version);
     if (!(http_version[len - 2] == '\r') || !(http_version[len - 1] = '\n'))
-    {
         write_and_exit(ERROR_400_MSG, sd2);
-    }
 
     // Check if HTTP/ portion is present in http_version
     if (!starts_with(http_version, "HTTP/"))
-    {
         write_and_exit(ERROR_501_MSG, sd2);
-    }
 }
 
 
@@ -281,21 +275,22 @@ void read_http_request(int sd2, char *request)
 
     // Associate socket stream to a file pointer so we can use fetgs() to read the socket
     FILE *fd;
-    if ((fd = fdopen(sd2, "r")) == NULL) {
+    if ((fd = fdopen(sd2, "r")) == NULL)
         errexit("Failed to open file pointer for socket!", NULL);
-    }
 
-    for (;;) {
-        if (fgets(http_request, BUFLEN, fd) == NULL) {
+    for (;;) 
+    {
+        if (fgets(http_request, BUFLEN, fd) == NULL)
             errexit("Could not get HTTP response!", NULL);
-        }
 
-        if (!has_read_request) {
+        if (!has_read_request) 
+        {
             strcpy(request, http_request);
             has_read_request = true;
         }
 
-        if (strcmp(http_request, CRLF) == 0) {
+        if (strcmp(http_request, CRLF) == 0) 
+        {
             printv("Reached end of request!\n", NULL);
             break;
         }
@@ -310,13 +305,9 @@ void handle_terminate(int sd2, char *argument, char *AUTH_TOKEN)
 {
     printv("Handling TERMINATE request...\n", NULL);
     if (strcmp(argument, AUTH_TOKEN) != 0) 
-    {
         write_to_socket(ERROR_403_MSG, sd2);
-    } 
     else 
-    {
         write_and_exit(TERMINATE_200_MSG, sd2);
-    }
 }
 
 
@@ -327,9 +318,7 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
 {
     printv("Handling GET request...\n", NULL);
     if (!starts_with(argument, "/")) 
-    {
         write_and_exit(ERROR_406_MSG, sd2);
-    }
 
     FILE *fp;
     char *content = malloc(BUFLEN);
@@ -338,20 +327,14 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
 
     // If argument is "/" set argument to the default filename
     if (strcmp(argument, "/") == 0) 
-    {
         strcat(filepath, DEFAULT_FILENAME);
-    } 
     else 
-    {
         strcat(filepath, argument);
-    }
     printf("Filepath: %s\n", filepath);
 
     // 404 error if cannot open requested file (e.g. because it does not exist)
     if ((fp = fopen(filepath, "r")) == NULL)
-    {
         write_and_exit(ERROR_404_MSG, sd2);
-    }
 
     int byte_size = 1;
     int bytes_read;
@@ -364,17 +347,13 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
         if (!has_written_success)
         {
             if (write(sd2, OK_200_MSG, strlen(OK_200_MSG)) < 0)
-            {
                 errexit("error writing message!", NULL);
-            }
             has_written_success = true;
         }
 
         // Write file contents
         if (write(sd2, content, bytes_read) < 0)
-        {
             errexit("error writing message!", NULL);
-        }
     }
     free(content);
     fclose(fp); 
@@ -387,17 +366,11 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
 void process_request(int sd2, char *request, char *method, char *argument, char *DOC_DIR, char *AUTH_TOKEN) 
 {
     if (strcmp(method, "TERMINATE") == 0) 
-    {
         handle_terminate(sd2, argument, AUTH_TOKEN);
-    } 
     else if (strcmp(method, "GET") == 0) 
-    {
         handle_get(sd2, argument, DOC_DIR);
-    } 
     else 
-    {
         write_and_exit(ERROR_405_MSG, sd2);
-    }
 }
 
 
