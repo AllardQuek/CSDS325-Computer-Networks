@@ -207,7 +207,7 @@ bool starts_with(const char *str, const char *prefix)
 */
 void parse_request(int sd2, char *request, char *method, char *argument, char *http_version)
 {
-    printf("Parsing request: %s\n", request);
+    printv("Parsing request: %s\n", request);
     char *token;
 
     // 1. Parse method
