@@ -187,7 +187,7 @@ int start_listening(char *port)
     if (listen(sd, QLEN) < 0)
         errexit("cannot listen on port %s\n", port);
 
-    printf("Listening for connections...\n");
+    printv("Listening for connections on port %s...\n", port);
     return sd;
 }
 
@@ -330,7 +330,7 @@ void handle_get(int sd2, char *argument, char *DOC_DIR)
         strcat(filepath, DEFAULT_FILENAME);
     else 
         strcat(filepath, argument);
-    printf("Filepath: %s\n", filepath);
+    printv("Filepath: %s\n", filepath);
 
     // 404 error if cannot open requested file (e.g. because it does not exist)
     if ((fp = fopen(filepath, "r")) == NULL)
@@ -386,9 +386,9 @@ int main(int argc, char *argv[])
     printv("Starting command-line based web client...\n", NULL);
     parse_args(argc, argv, &PORT, &DOC_DIR, &AUTH_TOKEN);
     check_required_args();
-    printf("Port: %s\n", PORT);
-    printf("Document Directory: %s\n", DOC_DIR);
-    printf("Auth Token: %s\n", AUTH_TOKEN);
+    printv("Port: %s\n", PORT);
+    printv("Document Directory: %s\n", DOC_DIR);
+    printv("Auth Token: %s\n", AUTH_TOKEN);
 
     int sd = start_listening(PORT);
     while (1)
