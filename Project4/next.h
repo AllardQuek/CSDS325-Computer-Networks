@@ -26,5 +26,5 @@ struct pkt_info
                                    otherwise NULL */
 };
 
-void errexit ();
+// void errexit ();
 unsigned short next_packet ();

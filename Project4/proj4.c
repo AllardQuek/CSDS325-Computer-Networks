@@ -18,9 +18,16 @@
 #include <unistd.h>
 
 // Add networking libraries
-#include <netdb.h>
-#include <sys/socket.h>
+#include <fcntl.h>
+#include <net/ethernet.h>
+#include <netinet/ip.h>
 #include <netinet/in.h>
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "next.h"
+
 
 // Define constant macros (from sample code)
 #define ERROR 1
