@@ -146,15 +146,123 @@ void check_required_args()
 }
 
 
+/* fd - an open file to read packets from
+   pinfo - allocated memory to put packet info into for one packet
+
+   returns:
+   1 - a packet was read and pinfo is setup for processing the packet
+   0 - we have hit the end of the file and no packet is available 
+ */
+unsigned short next_packet(int fd, struct pkt_info *pinfo)
+{
+    struct meta_info meta;
+    int bytes_read;
+
+    // Clear out memory in both structs
+    memset (pinfo,0x0,sizeof (struct pkt_info));
+    memset (&meta,0x0,sizeof (struct meta_info));
+
+    /* 1. read the meta information (12 bytes) */
+    bytes_read = read(fd, &meta, sizeof(meta));
+    if (bytes_read == 0)
+        return (0);
+    if (bytes_read < sizeof(meta))
+        errexit("cannot read meta information", NULL);
+
+    // Set caplen attribute of pkt_info struct
+    pinfo->caplen = ntohs(meta.caplen);  
+
+    /* 2. set pinfo->now based on meta.secs & meta.usecs */
+    pinfo->now = ntohl(meta.secs) + (ntohl(meta.usecs) / 1000000.0);
+
+    if (pinfo->caplen == 0)
+        return (1);
+    if (pinfo->caplen > MAX_PKT_SIZE)
+        errexit("packet too big", NULL);
+
+    /* 3. read the packet contents (caplen bytes) */
+    bytes_read = read(fd, pinfo->pkt,pinfo->caplen);
+
+    // Some error checking
+    if (bytes_read < 0)
+        errexit("error reading packet", NULL);
+    if (bytes_read < pinfo->caplen)
+        errexit("unexpected end of file encountered", NULL);
+    if (bytes_read < sizeof(struct ether_header))
+        return (1);
+
+    // Set ethernet header (first 14 bytes)
+    pinfo->ethh = (struct ether_header *)pinfo->pkt;
+    pinfo->ethh->ether_type = ntohs (pinfo->ethh->ether_type);
+
+    // Ignore anything that is not IP
+    if (pinfo->ethh->ether_type != ETHERTYPE_IP)
+        /* nothing more to do with non-IP packets */
+        return (1);
+    if (pinfo->caplen == sizeof (struct ether_header))
+        /* we don't have anything beyond the ethernet header to process */
+        return (1);
+
+    /* set pinfo->iph to start of IP header */
+
+    /* if TCP packet, 
+          set pinfo->tcph to the start of the TCP header
+          setup values in pinfo->tcph, as needed */
+
+    /* if UDP packet, 
+          set pinfo->udph to the start of the UDP header,
+          setup values in pinfo->udph, as needed */
+
+    // * TODO -s: turn two timestamps into double
+    return (1);
+}
+
+void print_packet(struct pkt_info *pinfo)
+{
+    printf("Packet: %d bytes\n", pinfo->caplen);
+}
+
+
 /**
  * Main entry point of program.
  * */
 int main(int argc, char *argv[])
 {
     char *TRACE_FILENAME;
+    int fd;
+    struct pkt_info pinfo = {0};
+    int total_pkts = 0;
+    int ip_pkts = 0;
+    double first_pkt = 0.0;
+    double last_pkt = 0.0;
+
     printv("Starting project 4...\n", NULL);
     parse_args(argc, argv, &TRACE_FILENAME);
     check_required_args();
-    printv("Trace filename: %s\n", TRACE_FILENAME);
+
+    // Open trace file
+    if ((fd = open(TRACE_FILENAME, O_RDONLY)) < 0)
+        errexit("cannot open trace file %s", TRACE_FILENAME);
+    
+    // Start reading packets
+    while (next_packet(fd, &pinfo) == 1)
+    {
+        // printf("Read packet: %d\n", total_packets);
+        if (total_pkts == 0)
+            first_pkt = pinfo.now;
+
+        last_pkt = pinfo.now;
+
+        if (pinfo.ethh->ether_type == ETHERTYPE_IP)
+            ip_pkts++;
+        
+        total_pkts++;
+    }
+
+    printf("FIRST PKT: %f\n", first_pkt);
+    printf("LAST PKT: %f\n", last_pkt);
+    printf("TOTAL PACKETS: %d\n", total_pkts);
+    printf("IP PACKETS: %d\n", ip_pkts);
+
     exit(0);
 }
