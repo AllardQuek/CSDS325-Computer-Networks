@@ -207,17 +207,17 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
         return (1);
 
     // b. Set iph to start of IP header by skipping ethernet header
-    // pinfo->ethh = (struct ether_header *)pinfo->pkt;
-    pinfo->iph = (struct iphdr *) (pinfo->pkt + sizeof(struct ether_header));
+    // pinfo->iph = (struct iphdr *) (pinfo->pkt + sizeof(struct ether_header));
+    pinfo->iph = (struct ip *) (pinfo->pkt + sizeof(struct ether_header));
 
     /* c. if TCP packet, 
           set pinfo->tcph to the start of the TCP header
           setup values in pinfo->tcph, as needed */
-    // if (pinfo->iph->protocol == IPPROTO_TCP) {
-    //     pinfo->tcph = (struct tcphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
-    //     pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
-    //     pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
-    // }
+    if (pinfo->iph->ip_p == IPPROTO_TCP) {
+        pinfo->tcph = (struct tcphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
+        pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
+        pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
+    }
 
     /* d. if UDP packet, 
           set pinfo->udph to the start of the UDP header,
@@ -228,7 +228,6 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     //     pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
     // }
 
-    // * TODO -s: turn two timestamps into double
     return (1);
 }
 
