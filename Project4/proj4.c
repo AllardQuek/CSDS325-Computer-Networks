@@ -32,6 +32,7 @@
 // Define constant macros (from sample code)
 #define ERROR 1
 #define ERROR_PREFIX "ERROR: "
+#define MICRO_FACTOR 1 / 1000000.0
 
 // Define option flags
 static bool is_option_t = false;
@@ -159,8 +160,8 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     int bytes_read;
 
     // Clear out memory in both structs
-    memset (pinfo,0x0,sizeof (struct pkt_info));
-    memset (&meta,0x0,sizeof (struct meta_info));
+    memset(pinfo, 0x0, sizeof(struct pkt_info));
+    memset(&meta, 0x0, sizeof(struct meta_info));
 
     /* 1. read the meta information (12 bytes) */
     bytes_read = read(fd, &meta, sizeof(meta));
@@ -169,19 +170,19 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     if (bytes_read < sizeof(meta))
         errexit("cannot read meta information", NULL);
 
-    // Set caplen attribute of pkt_info struct
+    // 2. Set caplen attribute of pkt_info struct
     pinfo->caplen = ntohs(meta.caplen);  
 
-    /* 2. set pinfo->now based on meta.secs & meta.usecs */
-    pinfo->now = ntohl(meta.secs) + (ntohl(meta.usecs) / 1000000.0);
+    // 3. Set now attribute based on meta.secs & meta.usecs
+    pinfo->now = ntohl(meta.secs) + (ntohl(meta.usecs) * MICRO_FACTOR);
 
     if (pinfo->caplen == 0)
         return (1);
     if (pinfo->caplen > MAX_PKT_SIZE)
         errexit("packet too big", NULL);
 
-    /* 3. read the packet contents (caplen bytes) */
-    bytes_read = read(fd, pinfo->pkt,pinfo->caplen);
+    // 3. Read packet contents (caplen bytes)
+    bytes_read = read(fd, pinfo->pkt, pinfo->caplen);
 
     // Some error checking
     if (bytes_read < 0)
@@ -191,27 +192,41 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     if (bytes_read < sizeof(struct ether_header))
         return (1);
 
-    // Set ethernet header (first 14 bytes)
-    pinfo->ethh = (struct ether_header *)pinfo->pkt;
-    pinfo->ethh->ether_type = ntohs (pinfo->ethh->ether_type);
+    // a. Set ethernet header (first 14 bytes right after meta info)
+    pinfo->ethh = (struct ether_header *) pinfo->pkt;
+
+    // Simply use ntohs to convert the initial value
+    pinfo->ethh->ether_type = ntohs(pinfo->ethh->ether_type);
 
     // Ignore anything that is not IP
     if (pinfo->ethh->ether_type != ETHERTYPE_IP)
-        /* nothing more to do with non-IP packets */
+        // Nothing more to do with non-IP packets
         return (1);
-    if (pinfo->caplen == sizeof (struct ether_header))
-        /* we don't have anything beyond the ethernet header to process */
+    if (pinfo->caplen == sizeof(struct ether_header))
+        // We don't have anything beyond the ethernet header to process
         return (1);
 
-    /* set pinfo->iph to start of IP header */
+    // b. Set iph to start of IP header by skipping ethernet header
+    // pinfo->ethh = (struct ether_header *)pinfo->pkt;
+    pinfo->iph = (struct iphdr *) (pinfo->pkt + sizeof(struct ether_header));
 
-    /* if TCP packet, 
+    /* c. if TCP packet, 
           set pinfo->tcph to the start of the TCP header
           setup values in pinfo->tcph, as needed */
+    // if (pinfo->iph->protocol == IPPROTO_TCP) {
+    //     pinfo->tcph = (struct tcphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
+    //     pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
+    //     pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
+    // }
 
-    /* if UDP packet, 
+    /* d. if UDP packet, 
           set pinfo->udph to the start of the UDP header,
           setup values in pinfo->udph, as needed */
+    // if (pinfo->iph->ip_p == IPPROTO_UDP) {
+    //     pinfo->udph = (struct udphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
+    //     pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
+    //     pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
+    // }
 
     // * TODO -s: turn two timestamps into double
     return (1);
@@ -255,7 +270,7 @@ int main(int argc, char *argv[])
 
         if (pinfo.ethh->ether_type == ETHERTYPE_IP)
             ip_pkts++;
-        
+
         total_pkts++;
     }
 
