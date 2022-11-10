@@ -232,7 +232,10 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
 }
 
 
-void print_summary(int fd, struct pkt_info pinfo)
+/**
+ * Handles -s option by printing a high-level summary of the trace file.
+*/
+void summary_mode(int fd, struct pkt_info pinfo)
 {
     int total_pkts = 0;
     int ip_pkts = 0;
@@ -261,6 +264,34 @@ void print_summary(int fd, struct pkt_info pinfo)
 }
 
 
+
+/**
+ * Handles -l option by printing length information about each IPv4 paket in the packet trace file.
+*/
+void length_mode()
+{
+    printf("Printing length information...\n");
+}
+
+
+/**
+ * Handles -p option by printing a single line of information about each TCP packet in the packet trace file.
+*/
+void packet_printing_mode()
+{
+    printf("Printing single line information about packet...\n");
+}
+
+
+/**
+ * Handles -m option by operating in "traffic matrix mode".
+*/
+void traffic_matrix_mode()
+{
+    printf("Operating in traffic matrix mode...\n");
+}
+
+
 /**
  * Main entry point of program.
  * */
@@ -279,11 +310,15 @@ int main(int argc, char *argv[])
         errexit("cannot open trace file %s", TRACE_FILENAME);
 
     if (is_option_s) {
-        print_summary(fd, pinfo);
+        summary_mode(fd, pinfo);
     }
 
     if (is_option_l) {
         printf("Option l selected.\n");
+    }
+
+    if (is_option_p) {
+        printf("Option p selected.\n");
     }
 
     if (is_option_m) {
