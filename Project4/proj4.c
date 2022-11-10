@@ -268,16 +268,22 @@ void summary_mode(int fd, struct pkt_info pinfo)
 /**
  * Handles -l option by printing length information about each IPv4 paket in the packet trace file.
 */
-void length_mode()
+void length_mode(int fd, struct pkt_info pinfo)
 {
     printf("Printing length information...\n");
+    
+    while (next_packet(fd, &pinfo) == 1)
+    {
+        // printf("Read packet: %d\n", total_packets);
+        printf("Packet length: %d\n", pinfo.caplen);
+    }
 }
 
 
 /**
  * Handles -p option by printing a single line of information about each TCP packet in the packet trace file.
 */
-void packet_printing_mode()
+void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
     printf("Printing single line information about packet...\n");
 }
@@ -286,7 +292,7 @@ void packet_printing_mode()
 /**
  * Handles -m option by operating in "traffic matrix mode".
 */
-void traffic_matrix_mode()
+void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 {
     printf("Operating in traffic matrix mode...\n");
 }
