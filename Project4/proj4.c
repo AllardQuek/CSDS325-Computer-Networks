@@ -214,7 +214,7 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
           set pinfo->tcph to the start of the TCP header
           setup values in pinfo->tcph, as needed */
     if (pinfo->iph->ip_p == IPPROTO_TCP) {
-        pinfo->tcph = (struct tcphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
+        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
         pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
         pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
     }
@@ -222,42 +222,23 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     /* d. if UDP packet, 
           set pinfo->udph to the start of the UDP header,
           setup values in pinfo->udph, as needed */
-    // if (pinfo->iph->ip_p == IPPROTO_UDP) {
-    //     pinfo->udph = (struct udphdr *)(pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
-    //     pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
-    //     pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
-    // }
+    if (pinfo->iph->ip_p == IPPROTO_UDP) {
+        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
+        pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
+        pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
+    }
 
     return (1);
 }
 
-void print_packet(struct pkt_info *pinfo)
-{
-    printf("Packet: %d bytes\n", pinfo->caplen);
-}
 
-
-/**
- * Main entry point of program.
- * */
-int main(int argc, char *argv[])
+void print_summary(int fd, struct pkt_info pinfo)
 {
-    char *TRACE_FILENAME;
-    int fd;
-    struct pkt_info pinfo = {0};
     int total_pkts = 0;
     int ip_pkts = 0;
     double first_pkt = 0.0;
     double last_pkt = 0.0;
 
-    printv("Starting project 4...\n", NULL);
-    parse_args(argc, argv, &TRACE_FILENAME);
-    check_required_args();
-
-    // Open trace file
-    if ((fd = open(TRACE_FILENAME, O_RDONLY)) < 0)
-        errexit("cannot open trace file %s", TRACE_FILENAME);
-    
     // Start reading packets
     while (next_packet(fd, &pinfo) == 1)
     {
@@ -277,6 +258,38 @@ int main(int argc, char *argv[])
     printf("LAST PKT: %f\n", last_pkt);
     printf("TOTAL PACKETS: %d\n", total_pkts);
     printf("IP PACKETS: %d\n", ip_pkts);
+}
 
+
+/**
+ * Main entry point of program.
+ * */
+int main(int argc, char *argv[])
+{
+    char *TRACE_FILENAME;
+    int fd;
+    struct pkt_info pinfo = {0};
+
+    printv("Starting project 4...\n", NULL);
+    parse_args(argc, argv, &TRACE_FILENAME);
+    check_required_args();
+
+    // Open trace file
+    if ((fd = open(TRACE_FILENAME, O_RDONLY)) < 0)
+        errexit("cannot open trace file %s", TRACE_FILENAME);
+
+    if (is_option_s) {
+        print_summary(fd, pinfo);
+    }
+
+    if (is_option_l) {
+        printf("Option l selected.\n");
+    }
+
+    if (is_option_m) {
+        printf("Option m selected.\n");
+    }
+
+    close(fd);
     exit(0);
 }
