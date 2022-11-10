@@ -3,3 +3,4 @@ Documentation: https://android.googlesource.com/platform/prebuilts/gcc/linux-x86
 TCP header length not fixed: https://www.oreilly.com/library/view/internet-core-protocols/1565925726/re69.html#:~:text=Since%20each%20of%20the%20header's,480%20bits%20%3D%2060%20bytes).
 UDP header length fixed: https://www.geeksforgeeks.org/examples-on-udp-header/#:~:text=UDP%20header%20is%20an%208%2Dbytes%20fixed
 "pinfo.udph->uh_ulen" gives size of the whole udp packet, not just the header
+print 32-bit unsigned integer: https://stackoverflow.com/questions/3168275/printf-format-specifiers-for-uint32-t-and-size-t

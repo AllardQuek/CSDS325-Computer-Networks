@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include "next.h"
 #include "arpa/inet.h"
+#include <inttypes.h>
+
 
 
 // Define constant macros (from sample code)
@@ -224,8 +226,12 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     if (pinfo->iph->ip_p == IPPROTO_TCP) 
     {
         pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * WORD_SIZE);
-        // pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
-        // pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
+        pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
+        pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
+        pinfo->tcph->th_win = ntohs(pinfo->tcph->th_win);
+        pinfo->tcph->th_seq = ntohl(pinfo->tcph->th_seq);
+        pinfo->tcph->th_ack = ntohl(pinfo->tcph->th_ack);
+        pinfo->tcph->th_flags = pinfo->tcph->th_flags & 0x3f;
     }
 
     /* d. if UDP packet, 
@@ -342,7 +348,7 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
     while (next_packet(fd, &pinfo) == 1)
     {
-        // Ignore non-ip packets
+        // ? Ignore non-ip packets
         if (pinfo.ethh->ether_type != ETHERTYPE_IP)
             continue;
 
@@ -353,7 +359,17 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
         }
 
         double ts = pinfo.now;
-        printf("%f %s %s %d %d %d %d %d %d\n", ts, inet_ntoa(pinfo.iph->ip_src), inet_ntoa(pinfo.iph->ip_dst), pinfo.iph->ip_ttl, ntohs(pinfo.tcph->th_sport), ntohs(pinfo.tcph->th_dport), ntohs(pinfo.tcph->th_win), ntohl(pinfo.tcph->th_seq), ntohl(pinfo.tcph->th_ack));
+        char src_ip[INET_ADDRSTRLEN];
+        char dst_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(pinfo.iph->ip_src), src_ip, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(pinfo.iph->ip_dst), dst_ip, INET_ADDRSTRLEN);
+        int ip_ttl = pinfo.iph->ip_ttl;
+        int src_port = pinfo.tcph->th_sport;
+        int dst_port = pinfo.tcph->th_dport;
+        int window = pinfo.tcph->th_win;
+        int seqno = pinfo.tcph->th_seq;
+        int ackno = pinfo.tcph->th_ack;
+        printf("%f %s %s %d %d %d %d %"PRIu32" %"PRIu32"\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
     }
 }
 
