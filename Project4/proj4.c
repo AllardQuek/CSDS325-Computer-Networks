@@ -293,7 +293,6 @@ void length_mode(int fd, struct pkt_info pinfo)
 
         if (pinfo.iph == NULL)
         {
-            // printf("NO IPv4 HEADER\n");
             printf("%f %d %c %c %c %c %c\n", ts, caplen, '-', '-', '-', '-', '-');
             continue;
         }
@@ -303,7 +302,6 @@ void length_mode(int fd, struct pkt_info pinfo)
         
         if (pinfo.iph->ip_p == IPPROTO_TCP) 
         {
-            // printf("Protocl is TCP\n");
             // ? why not trans_hl = sizeof(struct tcphdr);
             if (pinfo.tcph->th_off == 0)
             {
@@ -318,7 +316,6 @@ void length_mode(int fd, struct pkt_info pinfo)
         } 
         else if (pinfo.iph->ip_p == IPPROTO_UDP)
         {
-            // printf("Protocol is UDP\n");
             // ? why not trans_hl = pinfo.udph->uh_ulen * 4;
             if (pinfo.udph->uh_ulen == 0)
             {
@@ -332,7 +329,6 @@ void length_mode(int fd, struct pkt_info pinfo)
             }
         }
         else {
-            // printf("Other protocol\n");
             printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, '?', '?', '?');
         }
     }
@@ -341,6 +337,7 @@ void length_mode(int fd, struct pkt_info pinfo)
 
 /**
  * Handles -p option by printing a single line of information about each TCP packet in the packet trace file.
+ * Format: ts | src_ip | dst_ip | ip_tll | src_port | dst_port | window | seqno | ackno
 */
 void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
