@@ -201,31 +201,40 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     // Ignore anything that is not IP
     if (pinfo->ethh->ether_type != ETHERTYPE_IP)
         // Nothing more to do with non-IP packets
+        // printv("Non-IP packet ignored\n", NULL);
         return (1);
     if (pinfo->caplen == sizeof(struct ether_header))
         // We don't have anything beyond the ethernet header to process
         return (1);
 
-    // b. Set iph to start of IP header by skipping ethernet header
-    // pinfo->iph = (struct iphdr *) (pinfo->pkt + sizeof(struct ether_header));
+    // b. Set iph to start of IP header by skipping ethernet header (struct ip or struct iphdr)
     pinfo->iph = (struct ip *) (pinfo->pkt + sizeof(struct ether_header));
+
+    // Convert network byte orders (note that we do not need to set the ip_len attribute)
+    pinfo->iph->ip_len = ntohs(pinfo->iph->ip_len);
+    // printf("IP len: %d", pinfo->iph->ip_len);
+    // pinfo->iph->ip_hl = pinfo->iph->ip_hl * 4;
 
     /* c. if TCP packet, 
           set pinfo->tcph to the start of the TCP header
           setup values in pinfo->tcph, as needed */
-    if (pinfo->iph->ip_p == IPPROTO_TCP) {
-        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
-        pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
-        pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
+    if (pinfo->iph->ip_p == IPPROTO_TCP) 
+    {
+        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * 4);
+        // pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
+        // pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
     }
 
     /* d. if UDP packet, 
           set pinfo->udph to the start of the UDP header,
           setup values in pinfo->udph, as needed */
-    if (pinfo->iph->ip_p == IPPROTO_UDP) {
-        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + sizeof(struct ip));
-        pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
-        pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
+    else if (pinfo->iph->ip_p == IPPROTO_UDP) 
+    {
+        // NOT: sizeof(struct ip) at the end
+        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * 4);
+        // pinfo->udph->uh_ulen = ntohl(pinfo->udph->uh_ulen);
+        // pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
+        // pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
     }
 
     return (1);
@@ -267,15 +276,48 @@ void summary_mode(int fd, struct pkt_info pinfo)
 
 /**
  * Handles -l option by printing length information about each IPv4 paket in the packet trace file.
+ * Format: ts | caplen | ip_len | iphl | transport | trans_hl | payload_len
 */
 void length_mode(int fd, struct pkt_info pinfo)
 {
-    printf("Printing length information...\n");
-    
     while (next_packet(fd, &pinfo) == 1)
     {
-        // printf("Read packet: %d\n", total_packets);
-        printf("Packet length: %d\n", pinfo.caplen);
+        // Remember 1 is still returned for non-ip packets
+        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+            // ? Why cannot print here
+            continue;
+
+        int ip_len = pinfo.iph->ip_len;
+        int iphl = pinfo.iph->ip_hl * 4;    // ? Why multiply by 4 here
+        int transport = pinfo.iph->ip_p;
+        int trans_hl = '-';
+
+        if (pinfo.iph == NULL)
+        {
+            // printf("NO HEADER\n");
+            ip_len = '-'; 
+            iphl = '-';
+        }
+        
+        if (transport == IPPROTO_TCP) 
+        {
+            transport = 'T';
+            trans_hl = pinfo.tcph->th_off * 4;
+            // ? why not trans_hl = sizeof(struct tcphdr);
+        } 
+        else if (transport == IPPROTO_UDP)
+        {
+            transport = 'U';
+            // ? why not trans_hl = pinfo.udph->uh_ulen * 4;
+            trans_hl = sizeof(struct udphdr);
+        }
+        else {
+            transport = '?';
+            trans_hl= '?';
+        }
+
+        // print this format: Format: ts caplen ip_len iphl transport trans_hl payload_len
+        printf("%f %d %d %d %c %d %d\n", pinfo.now, pinfo.caplen, ip_len, iphl, transport, trans_hl, ip_len - iphl - trans_hl);
     }
 }
 
@@ -320,7 +362,7 @@ int main(int argc, char *argv[])
     }
 
     if (is_option_l) {
-        printf("Option l selected.\n");
+        length_mode(fd, pinfo);
     }
 
     if (is_option_p) {
