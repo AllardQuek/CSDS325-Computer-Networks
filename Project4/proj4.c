@@ -6,8 +6,9 @@
  * Filename: proj4.c
  * Date Created: 9 November 2022
  *
- * The third project of the semester involves writing a simple web server. 
- * The aim of this project is to think about and implement the server half of client-server applications.
+ * The aim of this project is to think about packets the way devices (e.g. computers, routers, switches, etc.)
+ * process packets. Further, this project will deepen your understanding of protocol layering by making you 
+ * navigate the protocol stack.
  * */
 
 
