@@ -35,6 +35,7 @@
 #define ERROR 1
 #define ERROR_PREFIX "ERROR: "
 #define MICRO_FACTOR 1 / 1000000.0
+#define WORD_SIZE 4
 
 // Define option flags
 static bool is_option_t = false;
@@ -222,7 +223,7 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
           setup values in pinfo->tcph, as needed */
     if (pinfo->iph->ip_p == IPPROTO_TCP) 
     {
-        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * 4);
+        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * WORD_SIZE);
         // pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
         // pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
     }
@@ -233,7 +234,7 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     else if (pinfo->iph->ip_p == IPPROTO_UDP) 
     {
         // NOT: sizeof(struct ip) at the end
-        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * 4);
+        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * WORD_SIZE);
         // pinfo->udph->uh_ulen = ntohl(pinfo->udph->uh_ulen);
         // pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
         // pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
@@ -286,7 +287,6 @@ void length_mode(int fd, struct pkt_info pinfo)
     {
         // Remember 1 is still returned for non-ip packets
         if (pinfo.ethh->ether_type != ETHERTYPE_IP)
-            // ? Why cannot print here
             continue;
 
         double ts = pinfo.now;
@@ -299,11 +299,11 @@ void length_mode(int fd, struct pkt_info pinfo)
         }
         
         int ip_len = pinfo.iph->ip_len;
-        int iphl = pinfo.iph->ip_hl * 4;    // ? Why multiply by 4 here
+        int iphl = pinfo.iph->ip_hl * WORD_SIZE;
         
         if (pinfo.iph->ip_p == IPPROTO_TCP) 
         {
-            // ? why not trans_hl = sizeof(struct tcphdr);
+            // th_off is the data offset
             if (pinfo.tcph->th_off == 0)
             {
                 printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'T', '-', '-');
@@ -317,14 +317,13 @@ void length_mode(int fd, struct pkt_info pinfo)
         } 
         else if (pinfo.iph->ip_p == IPPROTO_UDP)
         {
-            // ? why not trans_hl = pinfo.udph->uh_ulen * 4;
             if (pinfo.udph->uh_ulen == 0)
             {
                 printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'U', '-', '-');
             }
             else
             {
-                // ? Is the size of struct udphdr not fixed?
+                // ? why not trans_hl = pinfo.udph->uh_ulen * 4? why would that not return the fixed 8 bytes? what is the diff between this and udp header length?
                 int trans_hl = sizeof(struct udphdr);
                 printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, 'U', trans_hl, ip_len - iphl - trans_hl);
             }
