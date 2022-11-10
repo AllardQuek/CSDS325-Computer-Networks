@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "next.h"
+#include "arpa/inet.h"
 
 
 // Define constant macros (from sample code)
@@ -341,7 +342,21 @@ void length_mode(int fd, struct pkt_info pinfo)
 */
 void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
-    printf("Printing single line information about packet...\n");
+    while (next_packet(fd, &pinfo) == 1)
+    {
+        // Ignore non-ip packets
+        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+            continue;
+
+        if (pinfo.iph->ip_p != IPPROTO_TCP) 
+        {
+            // printf("Ignoring non-TCP packet\n");
+            continue;
+        }
+
+        double ts = pinfo.now;
+        printf("%f %s %s %d %d %d %d %d %d\n", ts, inet_ntoa(pinfo.iph->ip_src), inet_ntoa(pinfo.iph->ip_dst), pinfo.iph->ip_ttl, ntohs(pinfo.tcph->th_sport), ntohs(pinfo.tcph->th_dport), ntohs(pinfo.tcph->th_win), ntohl(pinfo.tcph->th_seq), ntohl(pinfo.tcph->th_ack));
+    }
 }
 
 
@@ -371,20 +386,26 @@ int main(int argc, char *argv[])
     if ((fd = open(TRACE_FILENAME, O_RDONLY)) < 0)
         errexit("cannot open trace file %s", TRACE_FILENAME);
 
-    if (is_option_s) {
+    // Handle single option provided
+    if (is_option_s) 
+    {
         summary_mode(fd, pinfo);
     }
-
-    if (is_option_l) {
+    else if (is_option_l) 
+    {
         length_mode(fd, pinfo);
     }
-
-    if (is_option_p) {
-        printf("Option p selected.\n");
+    else if (is_option_p) 
+    {
+        packet_printing_mode(fd, pinfo);
     }
-
-    if (is_option_m) {
+    else if (is_option_m) 
+    {
         printf("Option m selected.\n");
+    }
+    else 
+    {
+        errexit("No valid option was provided.", NULL);
     }
 
     close(fd);
