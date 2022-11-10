@@ -288,37 +288,53 @@ void length_mode(int fd, struct pkt_info pinfo)
             // ? Why cannot print here
             continue;
 
-        int ip_len = pinfo.iph->ip_len;
-        int iphl = pinfo.iph->ip_hl * 4;    // ? Why multiply by 4 here
-        int transport = pinfo.iph->ip_p;
-        int trans_hl = '-';
+        double ts = pinfo.now;
+        int caplen = pinfo.caplen;
 
         if (pinfo.iph == NULL)
         {
-            // printf("NO HEADER\n");
-            ip_len = '-'; 
-            iphl = '-';
+            // printf("NO IPv4 HEADER\n");
+            printf("%f %d %c %c %c %c %c\n", ts, caplen, '-', '-', '-', '-', '-');
+            continue;
         }
         
-        if (transport == IPPROTO_TCP) 
+        int ip_len = pinfo.iph->ip_len;
+        int iphl = pinfo.iph->ip_hl * 4;    // ? Why multiply by 4 here
+        
+        if (pinfo.iph->ip_p == IPPROTO_TCP) 
         {
-            transport = 'T';
-            trans_hl = pinfo.tcph->th_off * 4;
+            // printf("Protocl is TCP\n");
             // ? why not trans_hl = sizeof(struct tcphdr);
+            if (pinfo.tcph->th_off == 0)
+            {
+                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'T', '-', '-');
+            }
+            else
+            {
+                int trans_hl = pinfo.tcph->th_off * 4;
+                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, 'T', trans_hl, ip_len - iphl - trans_hl);
+            }
+            
         } 
-        else if (transport == IPPROTO_UDP)
+        else if (pinfo.iph->ip_p == IPPROTO_UDP)
         {
-            transport = 'U';
+            // printf("Protocol is UDP\n");
             // ? why not trans_hl = pinfo.udph->uh_ulen * 4;
-            trans_hl = sizeof(struct udphdr);
+            if (pinfo.udph->uh_ulen == 0)
+            {
+                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'U', '-', '-');
+            }
+            else
+            {
+                // ? Is the size of struct udphdr not fixed?
+                int trans_hl = sizeof(struct udphdr);
+                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, 'U', trans_hl, ip_len - iphl - trans_hl);
+            }
         }
         else {
-            transport = '?';
-            trans_hl= '?';
+            // printf("Other protocol\n");
+            printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, '?', '?', '?');
         }
-
-        // print this format: Format: ts caplen ip_len iphl transport trans_hl payload_len
-        printf("%f %d %d %d %c %d %d\n", pinfo.now, pinfo.caplen, ip_len, iphl, transport, trans_hl, ip_len - iphl - trans_hl);
     }
 }
 
