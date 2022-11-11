@@ -163,7 +163,7 @@ void check_required_args()
 }
 
 
-/* 
+/** 
     fd - an open file to read packets from
     pinfo - allocated memory to put packet info into for one packet
 
@@ -395,12 +395,27 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 
 
 /**
+ * Prints the keys and values of the traffic matrix map.
+*/
+void print_traffic_matrix(TrafficMatrix traffic_matrix)
+{
+    for (const auto &entry: traffic_matrix)
+    {
+        auto key_pair = entry.first;
+        std::cout << key_pair.first << " " 
+                  << key_pair.second << " "
+                  << entry.second << std::endl;
+    }
+}
+
+
+/**
  * Handles -m option by operating in "traffic matrix mode".
 */
 void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 {
     // std::unordered_map<SrcDstPair, int> traffic_matrix;
-    std::map<SrcDstPair, int> traffic_matrix;
+    TrafficMatrix traffic_matrix;
 
     while (next_packet(fd, &pinfo) == 1)
     {
@@ -424,7 +439,7 @@ void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 
         // Keep track of payload_len traffic between (src_ip, dst_ip) pair
         SrcDstPair pair = std::make_pair(src_ip, dst_ip);
-        std::map<SrcDstPair, int>::iterator it = traffic_matrix.find(pair);
+        TrafficMatrix::iterator it = traffic_matrix.find(pair);
         // std::unordered_map<SrcDstPair, int>::iterator it = traffic_matrix.find(pair);
 
         // Increment payload length if src-dst pair already exists in traffic_matrix
@@ -438,14 +453,7 @@ void traffic_matrix_mode(int fd, struct pkt_info pinfo)
         }
     }
 
-    // Print out traffic matrix
-    for (const auto &entry: traffic_matrix)
-    {
-        auto key_pair = entry.first;
-        std::cout << key_pair.first << " " 
-                  << key_pair.second << " "
-                  << entry.second << std::endl;
-    }
+    print_traffic_matrix(traffic_matrix);
 }
 
 
