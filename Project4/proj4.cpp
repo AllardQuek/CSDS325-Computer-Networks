@@ -166,6 +166,42 @@ void check_required_args()
 }
 
 
+/**
+ * Returns whether the packet is IPv4 or not.
+*/
+bool is_ip(struct pkt_info pinfo)
+{
+    return pinfo.ethh->ether_type == ETHERTYPE_IP;
+}
+
+
+/**
+ * Returns whether the packet is TCP or not.
+*/
+bool is_tcp(struct pkt_info pinfo)
+{
+    return pinfo.iph->ip_p == IPPROTO_TCP;
+}
+
+
+/**
+ * Returns whether the packet is UDP or not.
+*/
+bool is_udp(struct pkt_info pinfo)
+{
+    return pinfo.iph->ip_p == IPPROTO_UDP;
+}
+
+
+/**
+ * Calculates the payload length.
+*/
+int calc_payload_len(int ip_len, int iphl, int trans_hl)
+{
+    return ip_len - iphl - trans_hl;
+}
+
+
 /** 
     fd - an open file to read packets from
     pinfo - allocated memory to put packet info into for one packet
@@ -227,7 +263,6 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     pinfo->iph->ip_len = ntohs(pinfo->iph->ip_len);
     int ip_header_size = pinfo->iph->ip_hl * WORD_SIZE;
 
-    
     if (pinfo->iph->ip_p == IPPROTO_TCP) 
     {
         /* ci. if TCP packet, 
@@ -250,30 +285,6 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     }
 
     return (1);
-}
-
-
-bool is_ip(struct pkt_info pinfo)
-{
-    return pinfo.ethh->ether_type == ETHERTYPE_IP;
-}
-
-
-bool is_tcp(struct pkt_info pinfo)
-{
-    return pinfo.iph->ip_p == IPPROTO_TCP;
-}
-
-
-bool is_udp(struct pkt_info pinfo)
-{
-    return pinfo.iph->ip_p == IPPROTO_UDP;
-}
-
-
-int calc_payload_len(int ip_len, int iphl, int trans_hl)
-{
-    return ip_len - iphl - trans_hl;
 }
 
 
