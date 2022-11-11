@@ -61,6 +61,7 @@ static bool is_single_opt_provided = false;
 
 // put ':' in the starting of the string so that program can distinguish between '?' and ':'
 static const char *OPT_STRING = "slpmv:t:";
+static const int ETHER_HEADER_SIZE = sizeof(struct ether_header);
 
 
 /**
@@ -196,48 +197,41 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
     if (pinfo->caplen == 0)
         return (1);
     if (pinfo->caplen > MAX_PKT_SIZE)
-        errexit("packet too big", NULL);
+        errexit("Packet too big", NULL);
 
     // 3. Read packet contents (caplen bytes)
     bytes_read = read(fd, pinfo->pkt, pinfo->caplen);
 
     // Some error checking
     if (bytes_read < 0)
-        errexit("error reading packet", NULL);
+        errexit("Error reading packet", NULL);
     if (bytes_read < pinfo->caplen)
-        errexit("unexpected end of file encountered", NULL);
-    if (bytes_read < sizeof(struct ether_header))
+        errexit("Unexpected end of file encountered", NULL);
+    if (bytes_read < ETHER_HEADER_SIZE)
         return (1);
 
     // a. Set ethernet header (first 14 bytes right after meta info)
     pinfo->ethh = (struct ether_header *) pinfo->pkt;
+    pinfo->ethh->ether_type = ntohs(pinfo->ethh->ether_type);   // Convert network byte order
 
-    // Simply use ntohs to convert the initial value
-    pinfo->ethh->ether_type = ntohs(pinfo->ethh->ether_type);
-
-    // Ignore anything that is not IP
-    if (pinfo->ethh->ether_type != ETHERTYPE_IP)
-        // Nothing more to do with non-IP packets
-        // printv("Non-IP packet ignored\n", NULL);
-        return (1);
-    if (pinfo->caplen == sizeof(struct ether_header))
-        // We don't have anything beyond the ethernet header to process
+    // Ignore anything that is not IP and has nothing beyond ethernet header to process
+    bool is_ip = (pinfo->ethh->ether_type == ETHERTYPE_IP);
+    bool has_only_ethernet_header = (pinfo->caplen == ETHER_HEADER_SIZE);
+    if (!is_ip || has_only_ethernet_header)
         return (1);
 
     // b. Set iph to start of IP header by skipping ethernet header (struct ip or struct iphdr)
-    pinfo->iph = (struct ip *) (pinfo->pkt + sizeof(struct ether_header));
-
-    // Convert network byte orders (note that we do not need to set the ip_len attribute)
+    pinfo->iph = (struct ip *) (pinfo->pkt + ETHER_HEADER_SIZE);
     pinfo->iph->ip_len = ntohs(pinfo->iph->ip_len);
-    // printf("IP len: %d", pinfo->iph->ip_len);
-    // pinfo->iph->ip_hl = pinfo->iph->ip_hl * 4;
+    int ip_header_size = pinfo->iph->ip_hl * WORD_SIZE;
 
-    /* c. if TCP packet, 
-          set pinfo->tcph to the start of the TCP header
-          setup values in pinfo->tcph, as needed */
+    
     if (pinfo->iph->ip_p == IPPROTO_TCP) 
     {
-        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * WORD_SIZE);
+        /* ci. if TCP packet, 
+            set pinfo->tcph to the start of the TCP header
+            setup values in pinfo->tcph, as needed */
+        pinfo->tcph = (struct tcphdr *) (pinfo->pkt + ETHER_HEADER_SIZE + ip_header_size);
         pinfo->tcph->th_sport = ntohs(pinfo->tcph->th_sport);
         pinfo->tcph->th_dport = ntohs(pinfo->tcph->th_dport);
         pinfo->tcph->th_win = ntohs(pinfo->tcph->th_win);
@@ -245,17 +239,12 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
         pinfo->tcph->th_ack = ntohl(pinfo->tcph->th_ack);
         pinfo->tcph->th_flags = pinfo->tcph->th_flags & 0x3f;
     }
-
-    /* d. if UDP packet, 
-          set pinfo->udph to the start of the UDP header,
-          setup values in pinfo->udph, as needed */
     else if (pinfo->iph->ip_p == IPPROTO_UDP) 
     {
-        // NOT: sizeof(struct ip) at the end
-        pinfo->udph = (struct udphdr *) (pinfo->pkt + sizeof(struct ether_header) + pinfo->iph->ip_hl * WORD_SIZE);
-        // pinfo->udph->uh_ulen = ntohl(pinfo->udph->uh_ulen);
-        // pinfo->udph->uh_sport = ntohs(pinfo->udph->uh_sport);
-        // pinfo->udph->uh_dport = ntohs(pinfo->udph->uh_dport);
+        /* cii. if UDP packet, 
+            set pinfo->udph to the start of the UDP header, (NOT: sizeof(struct ip) at the end)
+            setup values in pinfo->udph, as needed */
+        pinfo->udph = (struct udphdr *) (pinfo->pkt + ETHER_HEADER_SIZE + ip_header_size);
     }
 
     return (1);
@@ -292,7 +281,6 @@ void summary_mode(int fd, struct pkt_info pinfo)
     printf("TOTAL PACKETS: %d\n", total_pkts);
     printf("IP PACKETS: %d\n", ip_pkts);
 }
-
 
 
 /**
