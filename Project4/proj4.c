@@ -369,8 +369,7 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
         int window = pinfo.tcph->th_win;
         int seqno = pinfo.tcph->th_seq;
         
-
-        // check if flags field shows that ACK bit is set to 1
+        // Check if flags field shows that ACK bit is set to 1
         if (pinfo.tcph->th_flags & TH_ACK)
         {
             int ackno = pinfo.tcph->th_ack;
@@ -380,9 +379,6 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
         {
             printf("%f %s %s %d %d %d %d %"PRIu32" %c\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, '-');
         }
-
-        // int ackno = pinfo.tcph->th_ack;
-        // printf("%f %s %s %d %d %d %d %"PRIu32" %"PRIu32"\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
     }
 }
 
