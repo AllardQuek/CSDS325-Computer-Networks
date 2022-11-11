@@ -17,7 +17,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <iostream>
+#include <map>
+#include <unordered_map>
+#include <utility>
+#include <iterator>
+#include <string>
 
 // Add networking libraries
 #include <fcntl.h>
@@ -32,13 +37,18 @@
 #include "arpa/inet.h"
 #include <inttypes.h>
 
-
-
 // Define constant macros (from sample code)
 #define ERROR 1
 #define ERROR_PREFIX "ERROR: "
 #define MICRO_FACTOR 1 / 1000000.0
 #define WORD_SIZE 4
+
+using namespace std;
+
+typedef std::pair<std::string, std::string> SrcDstPair;
+typedef map<SrcDstPair, int> TrafficMatrix;
+// typedef unordered_map<SrcDstPair, int> TrafficMatrix;
+
 
 // Define option flags
 static bool is_option_t = false;
@@ -153,12 +163,13 @@ void check_required_args()
 }
 
 
-/* fd - an open file to read packets from
-   pinfo - allocated memory to put packet info into for one packet
+/* 
+    fd - an open file to read packets from
+    pinfo - allocated memory to put packet info into for one packet
 
-   returns:
-   1 - a packet was read and pinfo is setup for processing the packet
-   0 - we have hit the end of the file and no packet is available 
+    returns:
+    1 - a packet was read and pinfo is setup for processing the packet
+    0 - we have hit the end of the file and no packet is available 
  */
 unsigned short next_packet(int fd, struct pkt_info *pinfo)
 {
@@ -355,7 +366,6 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 
         if (pinfo.iph->ip_p != IPPROTO_TCP) 
         {
-            // printf("Ignoring non-TCP packet\n");
             continue;
         }
 
@@ -389,7 +399,53 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 */
 void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 {
-    printf("Operating in traffic matrix mode...\n");
+    // std::unordered_map<SrcDstPair, int> traffic_matrix;
+    std::map<SrcDstPair, int> traffic_matrix;
+
+    while (next_packet(fd, &pinfo) == 1)
+    {
+        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+            continue;
+
+        // Ignore non-TCP packets
+        if (pinfo.iph->ip_p != IPPROTO_TCP || pinfo.tcph->th_off == 0) 
+            continue;
+
+        // Keep track of payload length between source and destination ip addresses in traffix_matrix
+        char src_ip[INET_ADDRSTRLEN];
+        char dst_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(pinfo.iph->ip_src), src_ip, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(pinfo.iph->ip_dst), dst_ip, INET_ADDRSTRLEN);
+
+        int ip_len = pinfo.iph->ip_len;
+        int iphl = pinfo.iph->ip_hl * WORD_SIZE;
+        int trans_hl = pinfo.tcph->th_off * 4;
+        int payload_len = ip_len - iphl - trans_hl;
+
+        // Keep track of payload_len traffic between (src_ip, dst_ip) pair
+        SrcDstPair pair = std::make_pair(src_ip, dst_ip);
+        std::map<SrcDstPair, int>::iterator it = traffic_matrix.find(pair);
+        // std::unordered_map<SrcDstPair, int>::iterator it = traffic_matrix.find(pair);
+
+        // Increment payload length if src-dst pair already exists in traffic_matrix
+        if (it != traffic_matrix.end()) 
+        {
+            it->second += payload_len;
+        }
+        else 
+        {
+            traffic_matrix.insert(std::make_pair(pair, payload_len));
+        }
+    }
+
+    // Print out traffic matrix
+    for (const auto &entry: traffic_matrix)
+    {
+        auto key_pair = entry.first;
+        std::cout << key_pair.first << " " 
+                  << key_pair.second << " "
+                  << entry.second << std::endl;
+    }
 }
 
 
@@ -425,7 +481,7 @@ int main(int argc, char *argv[])
     }
     else if (is_option_m) 
     {
-        printf("Option m selected.\n");
+        traffic_matrix_mode(fd, pinfo);
     }
     else 
     {
