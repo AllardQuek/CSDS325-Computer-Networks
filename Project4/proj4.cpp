@@ -253,6 +253,30 @@ unsigned short next_packet(int fd, struct pkt_info *pinfo)
 }
 
 
+bool is_ip(struct pkt_info pinfo)
+{
+    return pinfo.ethh->ether_type == ETHERTYPE_IP;
+}
+
+
+bool is_tcp(struct pkt_info pinfo)
+{
+    return pinfo.iph->ip_p == IPPROTO_TCP;
+}
+
+
+bool is_udp(struct pkt_info pinfo)
+{
+    return pinfo.iph->ip_p == IPPROTO_UDP;
+}
+
+
+int calc_payload_len(int ip_len, int iphl, int trans_hl)
+{
+    return ip_len - iphl - trans_hl;
+}
+
+
 /**
  * Handles -s option by printing a high-level summary of the trace file.
 */
@@ -293,7 +317,7 @@ void length_mode(int fd, struct pkt_info pinfo)
     while (next_packet(fd, &pinfo) == 1)
     {
         // Remember 1 is still returned for non-ip packets
-        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+        if (!is_ip(pinfo))
             continue;
 
         double ts = pinfo.now;
@@ -308,7 +332,7 @@ void length_mode(int fd, struct pkt_info pinfo)
         int ip_len = pinfo.iph->ip_len;
         int iphl = pinfo.iph->ip_hl * WORD_SIZE;
         
-        if (pinfo.iph->ip_p == IPPROTO_TCP) 
+        if (is_tcp(pinfo))
         {
             // th_off is the data offset
             if (pinfo.tcph->th_off == 0)
@@ -318,21 +342,22 @@ void length_mode(int fd, struct pkt_info pinfo)
             else
             {
                 int trans_hl = pinfo.tcph->th_off * 4;
-                int payload_len = ip_len - iphl - trans_hl;
+                int payload_len = calc_payload_len(ip_len, iphl, trans_hl);
                 printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, TCP, trans_hl, payload_len);
             }
             
         } 
-        else if (pinfo.iph->ip_p == IPPROTO_UDP)
+        else if (is_udp(pinfo))
         {
-            if (pinfo.udph->uh_ulen == 0)
+            bool has_no_udp_header = pinfo.udph->uh_ulen == 0;
+            if (has_no_udp_header)
             {
                 printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, UDP, MISSING, MISSING);
             }
             else
             {
                 int trans_hl = sizeof(struct udphdr);
-                int payload_len = ip_len - iphl - trans_hl;
+                int payload_len = calc_payload_len(ip_len, iphl, trans_hl);
                 printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, UDP, trans_hl, payload_len);
             }
         }
@@ -352,13 +377,8 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
     while (next_packet(fd, &pinfo) == 1)
     {
-        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+        if (!is_ip(pinfo) || !is_tcp(pinfo))
             continue;
-
-        if (pinfo.iph->ip_p != IPPROTO_TCP) 
-        {
-            continue;
-        }
 
         double ts = pinfo.now;
         char src_ip[INET_ADDRSTRLEN];
@@ -409,11 +429,11 @@ void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 
     while (next_packet(fd, &pinfo) == 1)
     {
-        if (pinfo.ethh->ether_type != ETHERTYPE_IP)
+        if (!is_ip(pinfo) || !is_tcp(pinfo))
             continue;
 
-        // Ignore non-TCP packets
-        if (pinfo.iph->ip_p != IPPROTO_TCP || pinfo.tcph->th_off == 0) 
+        bool has_no_tcp_header = pinfo.tcph->th_off == 0;
+        if (has_no_tcp_header) 
             continue;
 
         // Keep track of payload length between source and destination ip addresses in traffix_matrix
@@ -425,7 +445,7 @@ void traffic_matrix_mode(int fd, struct pkt_info pinfo)
         int ip_len = pinfo.iph->ip_len;
         int iphl = pinfo.iph->ip_hl * WORD_SIZE;
         int trans_hl = pinfo.tcph->th_off * 4;
-        int payload_len = ip_len - iphl - trans_hl;
+        int payload_len = calc_payload_len(ip_len, iphl, trans_hl);
 
         // Keep track of payload_len traffic between (src_ip, dst_ip) pair
         SrcDstPair pair = std::make_pair(src_ip, dst_ip);
