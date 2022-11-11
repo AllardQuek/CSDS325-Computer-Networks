@@ -19,9 +19,9 @@
 #include <unistd.h>
 #include <iostream>
 #include <map>
-#include <unordered_map>
 #include <utility>
 #include <iterator>
+#include <unordered_map>
 #include <string>
 
 // Add networking libraries
@@ -80,7 +80,7 @@ void usage(char *progname)
 /**
  * Prints debug information if verbose flag is set to true.
  * */
-void printv(char *msg_format, char *arg)
+void printv(const char *msg_format, char *arg)
 {
     if (is_option_v)
         fprintf(stdout, msg_format, arg);
@@ -90,7 +90,7 @@ void printv(char *msg_format, char *arg)
 /**
  * Prints error message to stderr and exits the program.
  * */
-int errexit(char *msg_format, char *arg)
+int errexit(const char *msg_format, char *arg)
 {
     fprintf(stderr, ERROR_PREFIX);
     fprintf(stderr, msg_format, arg);
@@ -414,7 +414,6 @@ void print_traffic_matrix(TrafficMatrix traffic_matrix)
 */
 void traffic_matrix_mode(int fd, struct pkt_info pinfo)
 {
-    // std::unordered_map<SrcDstPair, int> traffic_matrix;
     TrafficMatrix traffic_matrix;
 
     while (next_packet(fd, &pinfo) == 1)
@@ -440,7 +439,6 @@ void traffic_matrix_mode(int fd, struct pkt_info pinfo)
         // Keep track of payload_len traffic between (src_ip, dst_ip) pair
         SrcDstPair pair = std::make_pair(src_ip, dst_ip);
         TrafficMatrix::iterator it = traffic_matrix.find(pair);
-        // std::unordered_map<SrcDstPair, int>::iterator it = traffic_matrix.find(pair);
 
         // Increment payload length if src-dst pair already exists in traffic_matrix
         if (it != traffic_matrix.end()) 

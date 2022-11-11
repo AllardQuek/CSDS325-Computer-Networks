@@ -1,11 +1,16 @@
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <utility>
 
 using namespace std;
  
 typedef std::pair<std::string, std::string> src_dst;
 typedef map<src_dst, int> Map;
+
+// Create unordered_map
+typedef unordered_map<src_dst, int> TrafficMatrix;
+
  
  
 int main()

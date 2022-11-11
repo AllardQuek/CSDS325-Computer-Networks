@@ -6,3 +6,5 @@ UDP header length fixed: https://www.geeksforgeeks.org/examples-on-udp-header/#:
 print 32-bit unsigned integer: https://stackoverflow.com/questions/3168275/printf-format-specifiers-for-uint32-t-and-size-t
 C++ map example: https://www.techiedelight.com/use-std-pair-key-std-map-cpp/
 Insert into map: https://stackoverflow.com/a/19942856
+map vs unordered_map vs unordered_set: https://www.geeksforgeeks.org/unordered_map-in-cpp-stl/
+Fix C to C++ warnings: https://stackoverflow.com/questions/59670/how-to-get-rid-of-deprecated-conversion-from-string-constant-to-char-warnin
