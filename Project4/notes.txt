@@ -4,3 +4,4 @@ TCP header length not fixed: https://www.oreilly.com/library/view/internet-core-
 UDP header length fixed: https://www.geeksforgeeks.org/examples-on-udp-header/#:~:text=UDP%20header%20is%20an%208%2Dbytes%20fixed
 "pinfo.udph->uh_ulen" gives size of the whole udp packet, not just the header
 print 32-bit unsigned integer: https://stackoverflow.com/questions/3168275/printf-format-specifiers-for-uint32-t-and-size-t
+C++ map example: https://www.techiedelight.com/use-std-pair-key-std-map-cpp/

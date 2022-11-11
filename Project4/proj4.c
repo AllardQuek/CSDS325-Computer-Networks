@@ -373,11 +373,11 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
         if (pinfo.tcph->th_flags & TH_ACK)
         {
             int ackno = pinfo.tcph->th_ack;
-            printf("%f %s %s %d %d %d %d %"PRIu32" %"PRIu32"\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
+            printf("%f %s %s %d %d %d %d %" PRIu32 "%" PRIu32 "\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
         }
         else
         {
-            printf("%f %s %s %d %d %d %d %"PRIu32" %c\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, '-');
+            printf("%f %s %s %d %d %d %d %" PRIu32 "%c\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, '-');
         }
     }
 }

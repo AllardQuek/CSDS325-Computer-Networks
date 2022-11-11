@@ -1,10 +1,12 @@
 
 CFLAGS=-g -Wall -Werror
 
-TARGETS=proj4
+TARGETS=map
 
 all: $(TARGETS)
-	g++ -std=c++14 -o proj4 proj4.c
+
+map: map.cpp
+	g++ -std=c++11 -o map map.cpp
 
 clean:
 	rm -f $(TARGETS) 
