@@ -42,13 +42,15 @@
 #define ERROR_PREFIX "ERROR: "
 #define MICRO_FACTOR 1 / 1000000.0
 #define WORD_SIZE 4
+#define TCP 'T'
+#define UDP 'U'
+#define MISSING '-'
+#define UNKNOWN '?'
 
 using namespace std;
 
 typedef std::pair<std::string, std::string> SrcDstPair;
 typedef map<SrcDstPair, int> TrafficMatrix;
-// typedef unordered_map<SrcDstPair, int> TrafficMatrix;
-
 
 // Define option flags
 static bool is_option_t = false;
@@ -262,9 +264,8 @@ void summary_mode(int fd, struct pkt_info pinfo)
     double last_pkt = 0.0;
 
     // Start reading packets
-    while (next_packet(fd, &pinfo) == 1)
+    while (next_packet(fd, &pinfo))
     {
-        // printf("Read packet: %d\n", total_packets);
         if (total_pkts == 0)
             first_pkt = pinfo.now;
 
@@ -285,7 +286,7 @@ void summary_mode(int fd, struct pkt_info pinfo)
 
 /**
  * Handles -l option by printing length information about each IPv4 paket in the packet trace file.
- * Format: ts | caplen | ip_len | iphl | transport | trans_hl | payload_len
+ * Format: ts caplen ip_len iphl transport trans_hl payload_len
 */
 void length_mode(int fd, struct pkt_info pinfo)
 {
@@ -300,7 +301,7 @@ void length_mode(int fd, struct pkt_info pinfo)
 
         if (pinfo.iph == NULL)
         {
-            printf("%f %d %c %c %c %c %c\n", ts, caplen, '-', '-', '-', '-', '-');
+            printf("%f %d %c %c %c %c %c\n", ts, caplen, MISSING, MISSING, MISSING, MISSING, MISSING);
             continue;
         }
         
@@ -312,12 +313,13 @@ void length_mode(int fd, struct pkt_info pinfo)
             // th_off is the data offset
             if (pinfo.tcph->th_off == 0)
             {
-                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'T', '-', '-');
+                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, TCP, MISSING, MISSING);
             }
             else
             {
                 int trans_hl = pinfo.tcph->th_off * 4;
-                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, 'T', trans_hl, ip_len - iphl - trans_hl);
+                int payload_len = ip_len - iphl - trans_hl;
+                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, TCP, trans_hl, payload_len);
             }
             
         } 
@@ -325,16 +327,18 @@ void length_mode(int fd, struct pkt_info pinfo)
         {
             if (pinfo.udph->uh_ulen == 0)
             {
-                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, 'U', '-', '-');
+                printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, UDP, MISSING, MISSING);
             }
             else
             {
                 int trans_hl = sizeof(struct udphdr);
-                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, 'U', trans_hl, ip_len - iphl - trans_hl);
+                int payload_len = ip_len - iphl - trans_hl;
+                printf("%f %d %d %d %c %d %d\n", ts, caplen, ip_len, iphl, UDP, trans_hl, payload_len);
             }
         }
-        else {
-            printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, '?', '?', '?');
+        else 
+        {
+            printf("%f %d %d %d %c %c %c\n", ts, caplen, ip_len, iphl, UNKNOWN, UNKNOWN, UNKNOWN);
         }
     }
 }
@@ -348,7 +352,6 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
 {
     while (next_packet(fd, &pinfo) == 1)
     {
-        // ? Ignore non-ip packets
         if (pinfo.ethh->ether_type != ETHERTYPE_IP)
             continue;
 
@@ -372,11 +375,11 @@ void packet_printing_mode(int fd, struct pkt_info pinfo)
         if (pinfo.tcph->th_flags & TH_ACK)
         {
             int ackno = pinfo.tcph->th_ack;
-            printf("%f %s %s %d %d %d %d %" PRIu32 "%" PRIu32 "\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
+            printf("%f %s %s %d %d %d %d %" PRIu32 " %" PRIu32 "\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, ackno);
         }
         else
         {
-            printf("%f %s %s %d %d %d %d %" PRIu32 "%c\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, '-');
+            printf("%f %s %s %d %d %d %d %" PRIu32 " %c\n", ts, src_ip, dst_ip, ip_ttl, src_port, dst_port, window, seqno, MISSING);
         }
     }
 }
