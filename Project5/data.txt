@@ -1,0 +1,4 @@
+This project uses data collected by someone else. 
+
+Stefan Farthofer, Matthias Herlich, Christian Maier, Sabrina Pochaba, Julia Lackner, Peter Dorfinger, CRAWDAD dataset srfg/lte‑4g‑highway‑drive‑tests‑salzburg (v. 2022‑01‑18), downloaded from https://crawdad.org/srfg/lte‑4g‑highway‑drive‑tests‑salzburg/2022‑01‑18, https://doi.org/10.15783/6gc4‑y070, Jan 2022.
+

@@ -10,3 +10,4 @@ no_perm.txt
 *.tar.gz
 425.trace
 425-p.out
+data/
